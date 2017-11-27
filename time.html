@@ -1,0 +1,19 @@
+<html>
+    <head></head>
+    <body>
+        <div style="color: white; font-family: sans-serif; font-size: 48px;" id="time"></div>
+        <script>
+// width: 190 height: 50 fps: 1
+function toTimeString(date) {
+    let h = '0' + date.getHours()
+    let m = '0' + date.getMinutes()
+    let s = '0' + date.getSeconds()
+    return `${h.substr(-2, 2)}:${m.substr(-2, 2)}:${s.substr(-2, 2)}`
+}
+setInterval(() => {
+    let t = document.getElementById('time')
+    t.innerText = toTimeString(new Date())
+}, 1000)
+        </script>
+    </body>
+</html>
