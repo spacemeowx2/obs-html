@@ -1,0 +1,24 @@
+{
+  "name": "obs-html",
+  "version": "1.0.0",
+  "description": "Some html file I used in OBS Studio. Add BrowserSource to enjoy them.",
+  "main": "index.js",
+  "scripts": {
+    "build": "babel src -d js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/spacemeowx2/obs-html.git"
+  },
+  "author": "spacemeowx2",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/spacemeowx2/obs-html/issues"
+  },
+  "homepage": "https://github.com/spacemeowx2/obs-html#readme",
+  "devDependencies": {
+    "@types/text-encoding": "0.0.32",
+    "babel-cli": "^6.26.0"
+  }
+}
