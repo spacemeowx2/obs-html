@@ -22,16 +22,24 @@ class BilibiliDanmakuHelper {
     }
     onDanmu (danmu) {
         console.log('onDanmu', danmu)
-        this.addLine(`${danmu.lb}: ${danmu.text}`)
-        if (this.tts.length < 3) {
-            this.tts.addQueue(`${danmu.lb}说 ${danmu.text}`)
+        if (Param.get('textdanmu', '1') === '1') {
+            this.addLine(`${danmu.lb}: ${danmu.text}`)
+        }
+        if (Param.get('ttsdanmu', '1') === '1') {
+            if (this.tts.length < 3) {
+                this.tts.addQueue(`${danmu.lb}说 ${danmu.text}`)
+            }
         }
     }
     onGift (giftName, count, sender) {
         let text = `感谢${sender}的${count}个${giftName}`
         console.log('onGift', text)
-        this.addLine(text)
-        this.tts.addQueue(text) // 不管怎样还是要谢啊(逃 辣条刷屏就算了
+        if (Param.get('textgift', '1') === '1') {
+            this.addLine(text)
+        }
+        if (Param.get('ttsgift', '1') === '1') {
+            this.tts.addQueue(text) // 不管怎样还是要谢啊(逃 辣条刷屏就算了
+        }
     }
     onMessage (payload) {
         try {
