@@ -1,8 +1,8 @@
 // @ts-check
 class BilibiliDanmakuHelper {
     constructor (roomid) {
-        if (roomid || roomid.length > 0) {
-            this.tts = new TTS(Param.get('ttsint', 200), Param.get('volume', 0))
+        this.tts = new TTS(Param.get('ttsint', 200), Param.get('volume', 0))
+        if (roomid && roomid.length > 0) {
             let danmu = new BilibiliDanmaku(roomid)
             let welcome = `Bilibili 弹幕助手 启动! 当前房间号: ${roomid}`
             this.addLine(welcome)
@@ -15,7 +15,8 @@ class BilibiliDanmakuHelper {
                 }
             }
         } else {
-            this.addLine('Bilibili 弹幕助手 启动1')
+            this.addLine('Bilibili 弹幕助手 启动!')
+            this.addLine('请指定房间号')
             this.tts.addQueue('请指定房间号')
         }
     }
