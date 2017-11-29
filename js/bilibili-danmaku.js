@@ -5,6 +5,12 @@ function onDanmu (danmu) {
         tts.addQueue(`${danmu.lb}说 ${danmu.text}`)
     }
 }
+function onGift (giftName, count, sender) {
+    let text = `感谢${sender}的${count}个${giftName}`
+    console.log('onGift', text)
+    addLine(text)
+    tts.addQueue(text) // 不管怎样还是要谢啊(逃 辣条刷屏就算了
+}
 function onMessage (payload) {
     try {
         let data = JSON.parse(payload)
@@ -28,6 +34,10 @@ function onMessage (payload) {
                 }
                 onDanmu(danmu)
                 break
+            case 'SEND_GIFT':
+                let gift = data.data
+                onGift(gift.giftName, gift.num, gift.uname)
+                break
             default:
                 console.log('ignore unknown cmd: ', data.cmd)
         }
@@ -45,6 +55,11 @@ function addLine (text) {
         list.children[0].remove()
     }
 }
+function delay (time) {
+    return new Promise((res) => {
+        setTimeout(res, time)
+    })
+}
 class TTS {
     constructor (delay, volume) {
         this.delay = delay
@@ -57,6 +72,9 @@ class TTS {
         this.length++
     }
     prepare (text) {
+        if (this.volume === 0) {
+            return () => Promise.resolve()
+        }
         const url = `http://tts.baidu.com/text2audio?lan=zh&ie=UTF-8&spd=7&text=${encodeURIComponent(text)}`
         const audio = new Audio(url)
         audio.volume = this.volume
@@ -70,21 +88,27 @@ class TTS {
         })
     }
 }
-let tts = new TTS(200, 0.5)
-let danmu = new BilibiliDanmaku(Param.get('roomid'))
-addLine('Bilibili 弹幕助手 启动!')
-tts.addQueue('Bilibili 弹幕助手 启动!')
-danmu.onMessage = (pkg) => {
-    switch (pkg.op) {
-        case 5:
-            onMessage(pkg.payload)
-            break
+let tts = new TTS(Param.get('ttsint', 200), Param.get('volume', 0))
+function main (roomid) {
+    let danmu = new BilibiliDanmaku(roomid)
+    let welcome = `Bilibili 弹幕助手 启动! 当前房间号: ${roomid}`
+    addLine(welcome)
+    tts.addQueue(welcome)
+    danmu.onMessage = (pkg) => {
+        switch (pkg.op) {
+            case 5:
+                onMessage(pkg.payload)
+                break
+        }
     }
 }
-function delay (time) {
-    return new Promise((res) => {
-        setTimeout(res, time)
-    })
+/** @type {string} */
+let roomid = Param.get('roomid')
+if (roomid.length > 0) {
+    main(roomid)
+} else {
+    addLine('Bilibili 弹幕助手 启动1')
+    tts.addQueue('请制定房间号')
 }
 async function test () {
     for (let i = 0; i < 50; i++) {
