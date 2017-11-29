@@ -37,22 +37,7 @@ class BilibiliDanmakuHelper {
             let data = JSON.parse(payload)
             switch (data.cmd) {
                 case 'DANMU_MSG':
-                    let p = data.info
-                    let danmu = {
-                        ha: -1,
-                        mode: p[0][1],
-                        size: p[0][2],
-                        color: p[0][3],
-                        uid: p[2][0],
-                        wg: p[0][5],
-                        text: p[1],
-                        lb: p[2][1],
-                        I: {
-                            level: p[4][0],
-                            Sr: p[2][5],
-                            verify: !!p[2][6]
-                        }
-                    }
+                    let danmu = this.parseDanmu(data.info)
                     this.onDanmu(danmu)
                     break
                 case 'SEND_GIFT':
@@ -74,6 +59,23 @@ class BilibiliDanmakuHelper {
         list.appendChild(li)
         if (list.children.length > 50) {
             list.children[0].remove()
+        }
+    }
+    parseDanmu (p) {
+        return {
+            ha: -1,
+            mode: p[0][1],
+            size: p[0][2],
+            color: p[0][3],
+            uid: p[2][0],
+            wg: p[0][5],
+            text: p[1],
+            lb: p[2][1],
+            I: {
+                level: p[4][0],
+                Sr: p[2][5],
+                verify: !!p[2][6]
+            }
         }
     }
 }
