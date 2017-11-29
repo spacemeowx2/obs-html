@@ -1,5 +1,5 @@
 class Param {
-    static get (name) {
+    static get (name, def) {
         try {
             let search = ''
             search = location.search.substr(1)

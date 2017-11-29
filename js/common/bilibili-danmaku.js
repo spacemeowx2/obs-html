@@ -9,7 +9,7 @@ class BilibiliDanmaku {
     constructor (roomid) {
         this.onMessage = null
 
-        this.roomid = roomid
+        this.roomid = parseInt(roomid)
         this.headerLen = 16
         this.hbInterval = 30
         this.fields = [{
