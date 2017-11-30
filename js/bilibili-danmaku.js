@@ -108,7 +108,7 @@ class TTS {
         if (this.volume === 0) {
             return () => Promise.resolve()
         }
-        const url = `http://tts.baidu.com/text2audio?lan=zh&ie=UTF-8&spd=7&text=${encodeURIComponent(text)}`
+        const url = `http://tts.baidu.com/text2audio?lan=zh&ie=UTF-8&spd=${Param.get('speed', 7)}&text=${encodeURIComponent(text)}`
         const audio = new Audio(url)
         audio.volume = this.volume
         
