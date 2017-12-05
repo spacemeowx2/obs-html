@@ -108,6 +108,7 @@ class TTS {
         if (this.volume === 0) {
             return () => Promise.resolve()
         }
+        text = this.replace(text)
         const url = `http://tts.baidu.com/text2audio?lan=zh&ie=UTF-8&spd=${Param.get('speed', 7)}&text=${encodeURIComponent(text)}`
         const audio = new Audio(url)
         audio.volume = this.volume
@@ -119,6 +120,21 @@ class TTS {
             }
             audio.play()
         })
+    }
+    /**
+     * 替换常见的短语为汉字, 让弹幕娘别那么傻
+     * @param {string} text 
+     */
+    replace (text) {
+        const re233 = /233+/g
+        if (re233.test(text)) {
+            text = text.replace(re233, (s) => s.replace('2', '二').replace(/3/g, '三'))
+        }
+        const re666 = /666+/g
+        if (re666.test(text)) {
+            text = text.replace(re666, '六六六')
+        }
+        return text
     }
 }
 /** @type {string} */
