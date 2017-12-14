@@ -1,5 +1,5 @@
 var require = {
     paths: {
-        'axios': 'common/axios'
+        'axios': '../lib/axios'
     }
 }
