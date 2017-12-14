@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "target": "es6",
+        "baseUrl": "src",
+        "outDir": "js",
+        "strict": true,
+        "lib": [
+            "es2015",
+            "dom"
+        ],
+        "module": "amd",
+        "noImplicitAny": true
+    },
+    "include": [
+        "./src/*.ts"
+    ]
+}

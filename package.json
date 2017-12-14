@@ -4,7 +4,8 @@
   "description": "Some html file I used in OBS Studio. Add BrowserSource to enjoy them.",
   "main": "index.js",
   "scripts": {
-    "build": "babel src -d js",
+    "build": "tsc -p .",
+    "dev": "tsc -w -p .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -18,7 +19,13 @@
   },
   "homepage": "https://github.com/spacemeowx2/obs-html#readme",
   "devDependencies": {
+    "@types/axios": "^0.14.0",
     "@types/text-encoding": "0.0.32",
-    "babel-cli": "^6.26.0"
+    "babel-cli": "^6.26.0",
+    "typescript": "^2.6.2"
+  },
+  "dependencies": {
+    "axios": "^0.17.1",
+    "vue": "^2.5.10"
   }
 }
