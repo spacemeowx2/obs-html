@@ -1,7 +1,7 @@
 import { BilibiliDanmaku, DanmuInfo } from "common/bilibili-danmaku"
 import { Param } from "common/param"
-import { NeteaseMusic } from 'common/netease-music'
-new NeteaseMusic()
+import { NeteaseMusicAPI } from 'common/netease-music'
+new NeteaseMusicAPI()
 class Command {
     constructor (public cmd: string, public args: string[], public from: string) {
     }
