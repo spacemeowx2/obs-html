@@ -9,6 +9,7 @@
             "dom"
         ],
         "module": "amd",
+        "moduleResolution": "node",
         "noImplicitAny": true
     },
     "include": [
