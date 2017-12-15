@@ -10,9 +10,11 @@
         ],
         "module": "amd",
         "moduleResolution": "node",
-        "noImplicitAny": true
+        "noImplicitAny": true,
+        "allowJs": true
     },
     "include": [
-        "./src/*.ts"
+        "./src/*.ts",
+        "./typings/*.d.ts"
     ]
 }

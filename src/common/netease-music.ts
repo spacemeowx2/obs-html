@@ -1,33 +1,46 @@
-import { proxyInstance } from "./request"
+import axios from 'axios'
 import { AxiosInstance } from 'axios'
+import { aesRsaEncrypt } from './netease-crypto'
+const NETEASE_API_URL = 'http://music.163.com/weapi'
 
 export class NeteaseMusicAPI {
     axios: AxiosInstance
     constructor (proxy = 'https://0579dc8a-8835-4932-9253-e2143ec07833.coding.io/proxy.php') {
-        this.axios = proxyInstance(proxy)
+        this.axios = axios.create()
         this.axios.interceptors.request.use((config) => {
-            config.headers = Object.assign(config.headers || {}, {
-                'Origin': 'http://music.163.com',
-                'Referer': 'http://music.163.com',
-                'User-Agent': randomUserAgent(),
-                'X-Real-IP': randomChinaIpAddress(),
-                'Connection': 'keep-alive',
-                // 'Content-Type': 'application/x-www-form-urlencoded',
-            })
+            if (config.url && config.url.match(/^https?:/)) {
+                const overrideHeaders = {
+                    'Origin': 'http://music.163.com',
+                    'Referer': 'http://music.163.com',
+                    'User-Agent': randomUserAgent(),
+                    'X-Real-IP': randomChinaIpAddress(),
+                    'Connection': 'keep-alive',
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                }
+                config.headers['X-PROXY-HEADER'] = this.headers2ProxyHeader(overrideHeaders)
+                config.headers['X-PROXY-URL'] = config.url
+                config.url = proxy
+            }
             return config
         })
-        this.axios.get('http://localhost/phpinfo.php').then(async (r) => {
-            console.log(r)
-        })
     }
-    searchSong (key: string, limit: number, page: number, raw: number) {
+    headers2ProxyHeader (hs: any) {
+        return JSON.stringify(Object.keys(hs).map(k => `${k}: ${hs[k]}`))
+    }
+    request (api: string, data: any) {
+        let qs = Object.keys(data).map(k => `${encodeURIComponent(k)}=${encodeURIComponent(data[k])}`).join('&')
+        return this.axios.post(NETEASE_API_URL + '/cloudsearch/get/web?csrf_token=', qs)
+    }
+    async searchSong (key: string, limit: number, page: number, raw: number) {
         const obj = {
             s: key,
             type: 1,
             limit,
             offset: (page - 1) * limit,
         }
-        const encData = Enc.aesRsaEncrypt(JSON.stringify(obj))
+        const encData = aesRsaEncrypt(JSON.stringify(obj))
+        const res = await this.request(NETEASE_API_URL + '/cloudsearch/get/web?csrf_token=', encData)
+        console.log(res)
     }
 }
 

@@ -1,7 +1,8 @@
 import { BilibiliDanmaku, DanmuInfo } from "common/bilibili-danmaku"
 import { Param } from "common/param"
 import { NeteaseMusicAPI } from 'common/netease-music'
-new NeteaseMusicAPI()
+new NeteaseMusicAPI().searchSong('千本樱', 30, 1, 0)
+
 class Command {
     constructor (public cmd: string, public args: string[], public from: string) {
     }

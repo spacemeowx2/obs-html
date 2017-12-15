@@ -1,7 +1,7 @@
 define(["require", "exports", "common/bilibili-danmaku", "common/param", "common/netease-music"], function (require, exports, bilibili_danmaku_1, param_1, netease_music_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    new netease_music_1.NeteaseMusicAPI();
+    new netease_music_1.NeteaseMusicAPI().searchSong('千本樱', 30, 1, 0);
     class Command {
         constructor(cmd, args, from) {
             this.cmd = cmd;
