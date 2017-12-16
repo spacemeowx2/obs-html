@@ -2,12 +2,24 @@
     <head>
         <meta charset="utf-8">
         <script src="requirejs.conf.js"></script>
-        <style>
-        </style>
+        <link rel="stylesheet" href="css/order-song.css"></link>
     </head>
     <body>
-        <div id="danmaku">
-            <ul id="list"></ul>
+        <script type="text/x-template" id="order-song">
+            <div class="order-song">
+                <div class="order-tips"> <!--marquee-->
+                    <span v-text="tips"></span>
+                </div>
+                <div class="order-current">当前播放: {{currentSong}}</div>
+                <div class="order-list">
+                    <ul>
+                        <li v-for="i in list"></li>
+                    </ul>
+                </div>
+                <div v-text="toast" v-show="toastShow" class="order-toast"></div>
+            </div>
+        </script>
+        <div id="order-song">
         </div>
         <script data-main="js/bilibili-order-song.js" src="require.js"></script>
     </body>

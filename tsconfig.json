@@ -11,7 +11,9 @@
         "module": "amd",
         "moduleResolution": "node",
         "noImplicitAny": true,
-        "allowJs": true
+        "allowJs": true,
+        "allowSyntheticDefaultImports": true,
+        "experimentalDecorators": true
     },
     "include": [
         "./src/*.ts",

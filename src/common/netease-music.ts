@@ -1,10 +1,53 @@
 import axios from 'axios'
 import { AxiosInstance } from 'axios'
 import { aesRsaEncrypt } from './netease-crypto'
+import { MusicProvider, Music, MusicError } from './music-interface'
 const NETEASE_API_URL = 'http://music.163.com/weapi'
-
-export class NeteaseMusicAPI {
+const enum NMResCode {
+    OK = 200
+}
+interface NMResponse<T> {
+    code: NMResCode
+    result: T
+    data: T
+}
+interface NMAlumn {
+    id: number
+    name: string
+    picUrl: string
+}
+interface NMAuthor {
+    id: number
+    name: string
+}
+interface NMSource {
+    br: number
+    fid: number
+    size: number
+    vd: number
+}
+interface NMSong {
+    name: string
+    id: number
+    ar: NMAuthor[]
+    al: NMAlumn
+    dt: number
+    h?: NMSource
+    m?: NMSource
+    l?: NMSource
+}
+interface NMSearchResult {
+    songs: NMSong[]
+    songCount: number
+}
+interface NMURLResult {
+    url: string
+    br: number
+    size: number
+}
+export class NeteaseMusicAPI implements MusicProvider {
     axios: AxiosInstance
+    musicNM = new WeakMap<Music,  NMSong>()
     constructor (proxy = 'https://0579dc8a-8835-4932-9253-e2143ec07833.coding.io/proxy.php') {
         this.axios = axios.create()
         this.axios.interceptors.request.use((config) => {
@@ -27,20 +70,68 @@ export class NeteaseMusicAPI {
     headers2ProxyHeader (hs: any) {
         return JSON.stringify(Object.keys(hs).map(k => `${k}: ${hs[k]}`))
     }
-    request (api: string, data: any) {
+    request<T> (api: string, data: any) {
         let qs = Object.keys(data).map(k => `${encodeURIComponent(k)}=${encodeURIComponent(data[k])}`).join('&')
-        return this.axios.post(NETEASE_API_URL + '/cloudsearch/get/web?csrf_token=', qs)
+        return this.axios.post<T>(NETEASE_API_URL + api, qs)
     }
-    async searchSong (key: string, limit: number, page: number, raw: number) {
+    song2Music (song: NMSong): Music {
+        let ret: Music = {
+            name: song.name,
+            author: song.ar.map(a => a.name).join('/'),
+            duration: song.dt / 1000,
+            provider: this,
+            toString () {
+                return `${this.name} - ${this.author}`
+            }
+        }
+        this.musicNM.set(ret, song)
+        return ret
+    }
+    async search (key: string): Promise<Music[]> {
+        const limit = 30
+        const page = 1
         const obj = {
             s: key,
             type: 1,
-            limit,
+            limit: 30,
             offset: (page - 1) * limit,
         }
         const encData = aesRsaEncrypt(JSON.stringify(obj))
-        const res = await this.request(NETEASE_API_URL + '/cloudsearch/get/web?csrf_token=', encData)
-        console.log(res)
+        const res = await this.request<NMResponse<NMSearchResult>>('/cloudsearch/get/web?csrf_token=', encData)
+        const data = res.data
+        if (data.code !== NMResCode.OK) {
+            throw new MusicError('搜索失败')
+        }
+        let ret: Music[] = []
+        for (let song of data.result.songs) {
+            ret.push(this.song2Music(song))
+        }
+        return ret
+    }
+    async getMusicURL (music: Music): Promise<string> {
+        const song = this.musicNM.get(music)
+        if (!song) {
+            throw new Error('获取歌曲地址失败')
+        }
+        let br: number | undefined
+        if (song.m) {
+            br = song.m.br
+        }
+        return await this.getMusicURLById(song.id, br)
+    }
+    async getMusicURLById (id: number, br?: number) {
+        const obj = {
+            ids: [id],
+            br: br || 999000,
+            csrf_token: '',
+        }
+        const encData = aesRsaEncrypt(JSON.stringify(obj))
+        const res = await this.request<NMResponse<NMURLResult[]>>('/song/enhance/player/url', encData)
+        const data = res.data.data
+        if (res.data.code !== NMResCode.OK || data.length === 0) {
+            throw new MusicError('获取歌曲地址失败')
+        }
+        return data[0].url
     }
 }
 

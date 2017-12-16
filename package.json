@@ -22,7 +22,8 @@
     "@types/axios": "^0.14.0",
     "@types/text-encoding": "0.0.32",
     "babel-cli": "^6.26.0",
-    "typescript": "^2.6.2"
+    "typescript": "^2.6.2",
+    "vue-class-component": "^6.1.1"
   },
   "dependencies": {
     "aes-js": "^3.1.0",
