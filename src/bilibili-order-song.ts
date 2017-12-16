@@ -131,7 +131,7 @@ class SongPlayer {
     revert (from: string) {
         let toDelete: SongRequest | undefined
         const list = this.list
-        for (let i = list.length - 1; i !== 0; i++) {
+        for (let i = list.length - 1; i >= 0; i++) {
             const req = list[i]
             if (req.from === from) {
                 toDelete = req
@@ -212,6 +212,7 @@ class BilibiliOrderSong implements MusicListener<SongRequest> {
             case '点歌':
                 try {
                     await this.queue.add(new SongRequest(cmd.from, cmd.args[0]))
+                    this.toast(`${cmd.from} 点歌成功`, true)
                 } catch (e) {
                     if (e instanceof MusicError) {
                         this.toast(`${cmd.from} 点歌 ${cmd.args[0]} 失败: ${e.message}`)
@@ -221,6 +222,7 @@ class BilibiliOrderSong implements MusicListener<SongRequest> {
             case '撤回':
                 try {
                     this.queue.revert(cmd.from)
+                    this.toast(`${cmd.from} 撤回成功`, true)
                 } catch (e) {
                     if (e instanceof MusicError) {
                         this.toast(`${cmd.from} 撤回失败: ${e.message}`)

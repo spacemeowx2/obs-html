@@ -149,7 +149,7 @@ define(["require", "exports", "common/bilibili-danmaku", "common/param", "common
         revert(from) {
             let toDelete;
             const list = this.list;
-            for (let i = list.length - 1; i !== 0; i++) {
+            for (let i = list.length - 1; i >= 0; i++) {
                 const req = list[i];
                 if (req.from === from) {
                     toDelete = req;
@@ -232,6 +232,7 @@ define(["require", "exports", "common/bilibili-danmaku", "common/param", "common
                     case '点歌':
                         try {
                             yield this.queue.add(new SongRequest(cmd.from, cmd.args[0]));
+                            this.toast(`${cmd.from} 点歌成功`, true);
                         }
                         catch (e) {
                             if (e instanceof music_interface_1.MusicError) {
@@ -242,6 +243,7 @@ define(["require", "exports", "common/bilibili-danmaku", "common/param", "common
                     case '撤回':
                         try {
                             this.queue.revert(cmd.from);
+                            this.toast(`${cmd.from} 撤回成功`, true);
                         }
                         catch (e) {
                             if (e instanceof music_interface_1.MusicError) {
