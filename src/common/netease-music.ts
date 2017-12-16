@@ -193,6 +193,9 @@ export class NeteaseMusicAPI implements MusicProvider {
         if (res.data.code !== NMResCode.OK || data.length === 0) {
             throw new MusicError('获取歌曲地址失败')
         }
+        if (!data[0].url) {
+            throw new MusicError('歌曲可能已下架')
+        }
         return data[0].url
     }
 }

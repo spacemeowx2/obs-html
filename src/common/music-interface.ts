@@ -25,4 +25,5 @@ export interface MusicProvider {
 export interface MusicListener<T> {
     onProcess (music: Music, currentTime: number, durationTime: number): void
     onListUpdate (list: T[]): void
+    onError (e: any): void
 }

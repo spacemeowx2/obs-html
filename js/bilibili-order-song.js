@@ -61,6 +61,15 @@ define(["require", "exports", "common/bilibili-danmaku", "common/param", "common
         play() {
             this.lifetime = this.lifetime.then(() => this._play());
             this.lifetime = this.lifetime.then(() => this.untilStop());
+            this.lifetime = this.lifetime.catch((e) => {
+                if (e instanceof music_interface_1.MusicError) {
+                    this.listener.onError(e);
+                }
+                else {
+                    this.listener.onError(new music_interface_1.MusicError('播放时发生未知错误'));
+                }
+                console.error(e);
+            });
             return this.lifetime;
         }
         stop() {
@@ -84,7 +93,8 @@ define(["require", "exports", "common/bilibili-danmaku", "common/param", "common
                 if (!this.audio)
                     return res();
                 this.audio.onended = () => res();
-                this.audio.onerror = () => rej(new music_interface_1.MusicError('播放时出现错误'));
+                this.audio.onerror = () => res();
+                this.audio.onpause = () => res();
             });
         }
         _play() {
@@ -138,14 +148,15 @@ define(["require", "exports", "common/bilibili-danmaku", "common/param", "common
         }
         revert(from) {
             let toDelete;
-            for (let req of this.list.reverse()) {
+            const list = this.list;
+            for (let i = list.length - 1; i !== 0; i++) {
+                const req = list[i];
                 if (req.from === from) {
                     toDelete = req;
                     break;
                 }
             }
             if (toDelete) {
-                const list = this.list;
                 let idx = list.indexOf(toDelete);
                 for (let i = idx; i < list.length - 1; i++) {
                     list[i] = list[i + 1];
@@ -179,6 +190,13 @@ define(["require", "exports", "common/bilibili-danmaku", "common/param", "common
                     this.list.shift();
                 }));
             }
+            else {
+                const last = this.currentReq;
+                const lastPreload = this.preloads.get(last);
+                if (lastPreload) {
+                    lastPreload.stop();
+                }
+            }
         }
     }
     class BilibiliOrderSong {
@@ -204,7 +222,6 @@ define(["require", "exports", "common/bilibili-danmaku", "common/param", "common
                             let req = new SongRequest(cmd.from, cmd.args[0]);
                             req.music = music;
                             yield this.queue.add(req);
-                            this.view.queue = this.queue.list.slice();
                         }
                         catch (e) {
                             if (e instanceof music_interface_1.MusicError) {
@@ -255,8 +272,13 @@ define(["require", "exports", "common/bilibili-danmaku", "common/param", "common
             this.view.currentTime = currentTime;
             this.view.currentDuration = durationTime;
         }
-        toast(text) {
-            console.log(text);
+        onError(e) {
+            if (e instanceof music_interface_1.MusicError) {
+                this.toast(e.message);
+            }
+        }
+        toast(text, success = false) {
+            this.view.showToast(text, success ? order_song_view_1.ToastColor.Success : order_song_view_1.ToastColor.Warning);
         }
     }
     let orderSong;
@@ -265,6 +287,8 @@ define(["require", "exports", "common/bilibili-danmaku", "common/param", "common
         let view = new order_song_view_1.OrderSongComponent();
         view.$mount('#order-song');
         orderSong = new BilibiliOrderSong(roomid, view);
+        // @ts-ignore
+        window.orderView = view;
         // @ts-ignore
         window.orderSong = orderSong;
     }

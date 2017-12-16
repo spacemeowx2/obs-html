@@ -19,7 +19,9 @@
                     </ul>
                     <div v-else>当前播放列表为空</div>
                 </div>
-                <div v-text="toast" v-show="toastShow" class="order-toast"></div>
+                <transition name="fade">
+                    <div v-text="toast" v-bind:style="{backgroundColor: toastColor}" v-show="toastShow" class="order-toast"></div>
+                </transition>
             </div>
         </script>
         <div id="order-song">

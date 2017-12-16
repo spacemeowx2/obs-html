@@ -145,6 +145,9 @@ define(["require", "exports", "axios", "./netease-crypto", "./music-interface"],
                 if (res.data.code !== 200 /* OK */ || data.length === 0) {
                     throw new music_interface_1.MusicError('获取歌曲地址失败');
                 }
+                if (!data[0].url) {
+                    throw new music_interface_1.MusicError('歌曲可能已下架');
+                }
                 return data[0].url;
             });
         }

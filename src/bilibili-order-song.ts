@@ -2,7 +2,7 @@ import { BilibiliDanmaku, DanmuInfo } from "common/bilibili-danmaku"
 import { Param } from "common/param"
 import { NeteaseMusicAPI } from 'common/netease-music'
 import { MusicProvider, Music, MusicError, MusicListener } from 'common/music-interface'
-import { OrderSongComponent } from './order-song-view'
+import { OrderSongComponent, ToastColor } from './order-song-view'
 import { Task } from './common/utils'
 
 class Command {
@@ -54,6 +54,14 @@ class SongPreload {
     play () {
         this.lifetime = this.lifetime.then(() => this._play())
         this.lifetime = this.lifetime.then(() => this.untilStop())
+        this.lifetime = this.lifetime.catch((e) => {
+            if (e instanceof MusicError) {
+                this.listener.onError(e)
+            } else {
+                this.listener.onError(new MusicError('播放时发生未知错误'))
+            }
+            console.error(e)
+        })
         return this.lifetime
     }
     stop () {
@@ -73,7 +81,8 @@ class SongPreload {
         return new Promise<void>((res, rej) => {
             if (!this.audio) return res()
             this.audio.onended = () => res()
-            this.audio.onerror = () => rej(new MusicError('播放时出现错误'))
+            this.audio.onerror = () => res()
+            this.audio.onpause = () => res()
         })
     }
     private async _play () {
@@ -121,14 +130,15 @@ class SongPlayer {
     }
     revert (from: string) {
         let toDelete: SongRequest | undefined
-        for (let req of this.list.reverse()) {
+        const list = this.list
+        for (let i = list.length - 1; i !== 0; i++) {
+            const req = list[i]
             if (req.from === from) {
                 toDelete = req
                 break
             }
         }
         if (toDelete) {
-            const list = this.list
             let idx = list.indexOf(toDelete)
             for (let i = idx; i < list.length - 1; i++) {
                 list[i] = list[i + 1]
@@ -161,6 +171,12 @@ class SongPlayer {
             this.playTask.add(async () => {
                 this.list.shift()
             })
+        } else {
+            const last = this.currentReq
+            const lastPreload = this.preloads.get(last)
+            if (lastPreload) {
+                lastPreload.stop()
+            }
         }
     }
 }
@@ -187,7 +203,6 @@ class BilibiliOrderSong implements MusicListener<SongRequest> {
                     let req = new SongRequest(cmd.from, cmd.args[0])
                     req.music = music
                     await this.queue.add(req)
-                    this.view.queue = this.queue.list.slice()
                 } catch (e) {
                     if (e instanceof MusicError) {
                         this.toast(`${cmd.from} 点歌 ${cmd.args[0]} 失败: ${e.message}`)
@@ -234,8 +249,13 @@ class BilibiliOrderSong implements MusicListener<SongRequest> {
         this.view.currentTime = currentTime
         this.view.currentDuration = durationTime
     }
-    toast (text: string) {
-        console.log(text)
+    onError (e: any) {
+        if (e instanceof MusicError) {
+            this.toast(e.message)
+        }
+    }
+    toast (text: string, success: boolean = false) {
+        this.view.showToast(text, success ? ToastColor.Success : ToastColor.Warning)
     }
 }
 let orderSong: BilibiliOrderSong
@@ -244,6 +264,8 @@ function bilibiliOrderSong () {
     let view = new OrderSongComponent()
     view.$mount('#order-song')
     orderSong = new BilibiliOrderSong(roomid, view)
+    // @ts-ignore
+    window.orderView = view
     // @ts-ignore
     window.orderSong = orderSong
 }
