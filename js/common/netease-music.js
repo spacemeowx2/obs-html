@@ -10,6 +10,30 @@ define(["require", "exports", "axios", "./netease-crypto", "./music-interface"],
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     const NETEASE_API_URL = 'http://music.163.com/weapi';
+    function shortSource2Source(ss) {
+        if (!ss)
+            return;
+        let src = {
+            bitrate: ss.br,
+            id: ss.fid,
+            size: ss.size,
+            volumeDelta: ss.vd
+        };
+        return src;
+    }
+    function shortSong2Song(ss) {
+        let song = {
+            name: ss.name,
+            id: ss.id,
+            artists: ss.ar,
+            album: ss.al,
+            duration: ss.dt,
+            hMusic: shortSource2Source(ss.h),
+            mMusic: shortSource2Source(ss.m),
+            lMusic: shortSource2Source(ss.l),
+        };
+        return song;
+    }
     class NeteaseMusicAPI {
         constructor(proxy = 'https://0579dc8a-8835-4932-9253-e2143ec07833.coding.io/proxy.php') {
             this.musicNM = new WeakMap();
@@ -38,16 +62,23 @@ define(["require", "exports", "axios", "./netease-crypto", "./music-interface"],
             let qs = Object.keys(data).map(k => `${encodeURIComponent(k)}=${encodeURIComponent(data[k])}`).join('&');
             return this.axios.post(NETEASE_API_URL + api, qs);
         }
-        song2Music(song) {
-            let ret = {
+        shortSong2Music(song) {
+            let ret = new music_interface_1.Music({
                 name: song.name,
                 author: song.ar.map(a => a.name).join('/'),
                 duration: song.dt / 1000,
-                provider: this,
-                toString() {
-                    return `${this.name} - ${this.author}`;
-                }
-            };
+                provider: this
+            });
+            this.musicNM.set(ret, shortSong2Song(song));
+            return ret;
+        }
+        song2Music(song) {
+            let ret = new music_interface_1.Music({
+                name: song.name,
+                author: song.artists.map(a => a.name).join('/'),
+                duration: song.duration / 1000,
+                provider: this
+            });
             this.musicNM.set(ret, song);
             return ret;
         }
@@ -69,7 +100,7 @@ define(["require", "exports", "axios", "./netease-crypto", "./music-interface"],
                 }
                 let ret = [];
                 for (let song of data.result.songs) {
-                    ret.push(this.song2Music(song));
+                    ret.push(this.shortSong2Music(song));
                 }
                 return ret;
             });
@@ -81,10 +112,24 @@ define(["require", "exports", "axios", "./netease-crypto", "./music-interface"],
                     throw new Error('获取歌曲地址失败');
                 }
                 let br;
-                if (song.m) {
-                    br = song.m.br;
+                if (song.mMusic) {
+                    br = song.mMusic.bitrate;
                 }
                 return yield this.getMusicURLById(song.id, br);
+            });
+        }
+        getMusicById(id) {
+            return __awaiter(this, void 0, void 0, function* () {
+                const res = yield this.axios.get(`http://music.163.com/api/song/detail/?ids=${encodeURIComponent(JSON.stringify([id]))}`);
+                const data = res.data;
+                if (data.code !== 200 /* OK */)
+                    throw new Error('获取歌曲详情时失败');
+                if (data.songs.length > 0) {
+                    return this.song2Music(data.songs[0]);
+                }
+                else {
+                    throw new Error('获取歌曲详情个数为0');
+                }
             });
         }
         getMusicURLById(id, br) {

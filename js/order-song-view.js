@@ -14,6 +14,7 @@ define(["require", "exports", "vue", "vue-class-component"], function (require, 
         if (toPadLen > 0) {
             return padStr.repeat(toPadLen) + s;
         }
+        return s;
     }
     function sec2pretty(sec) {
         const min = Math.floor(sec / 60);
@@ -26,23 +27,36 @@ define(["require", "exports", "vue", "vue-class-component"], function (require, 
             this.tips = '发送 "!点歌,歌名" 进行点歌';
             this.currentTime = 0; // in sec
             this.currentDuration = 0; // in sec
+            this.currentFrom = '';
             this.toast = '';
-            this.queue = new Array();
+            this.queue = [];
+            this.showItems = 5;
         }
         get toastShow() {
             return this.toast.length > 0;
         }
         get currentSong() {
+            if (this.queue.length === 0)
+                return '暂无歌曲';
             return `${this.songDisplayName} ${sec2pretty(this.currentTime)} / ${sec2pretty(this.currentDuration)}`;
         }
+        get curFrom() {
+            if (this.currentFrom.length > 0) {
+                return `(${this.currentFrom})`;
+            }
+            return '';
+        }
         get list() {
-            return this.queue.slice(1);
+            return this.queue.slice(1, 1 + this.showItems);
+        }
+        get listCount() {
+            return this.queue.length - 1;
         }
         get songDisplayName() {
             if (this.queue.length === 0)
                 return '暂无歌曲';
-            let cur = this.queue[0];
-            return `${cur.name} - ${cur.author}`;
+            let cur = this.queue[0].music;
+            return cur.toString();
         }
     };
     OrderSongComponent = __decorate([
@@ -52,34 +66,4 @@ define(["require", "exports", "vue", "vue-class-component"], function (require, 
         })
     ], OrderSongComponent);
     exports.OrderSongComponent = OrderSongComponent;
-    exports.OrderSongComponent2 = vue_1.default.extend({
-        name: 'order-song',
-        template: '#order-song',
-        data() {
-            return {
-                tips: '发送 "!点歌,歌名" 进行点歌',
-                currentTime: 0,
-                currentDuration: 0,
-                toast: '',
-                queue: new Array()
-            };
-        },
-        computed: {
-            toastShow() {
-                return this.toast.length > 0;
-            },
-            currentSong() {
-                return `${this.songDisplayName} ${sec2pretty(this.currentTime)} / ${sec2pretty(this.currentDuration)}`;
-            },
-            list() {
-                return this.queue.slice(1);
-            },
-            songDisplayName() {
-                if (this.queue.length === 0)
-                    return '暂无歌曲';
-                let cur = this.queue[0];
-                return `${cur.name} - ${cur.author}`;
-            }
-        }
-    });
 });

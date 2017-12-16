@@ -6,11 +6,10 @@ const NETEASE_API_URL = 'http://music.163.com/weapi'
 const enum NMResCode {
     OK = 200
 }
-interface NMResponse<T> {
+interface NMResponseCode {
     code: NMResCode
-    result: T
-    data: T
 }
+type NMResponse<T> = NMResponseCode & T
 interface NMAlumn {
     id: number
     name: string
@@ -20,30 +19,76 @@ interface NMAuthor {
     id: number
     name: string
 }
-interface NMSource {
+interface NMShortSource {
     br: number
     fid: number
     size: number
     vd: number
 }
-interface NMSong {
+interface NMSource {
+    bitrate: number
+    id: number
+    size: number
+    volumeDelta: number
+}
+interface NMSong { //mdzz
+    name: string
+    id: number
+    artists: NMAuthor[]
+    album: NMAlumn
+    duration: number
+    hMusic?: NMSource
+    mMusic?: NMSource
+    lMusic?: NMSource
+}
+interface NMShortSong {
     name: string
     id: number
     ar: NMAuthor[]
     al: NMAlumn
     dt: number
-    h?: NMSource
-    m?: NMSource
-    l?: NMSource
+    h?: NMShortSource
+    m?: NMShortSource
+    l?: NMShortSource
+}
+function shortSource2Source (ss: NMShortSource | undefined) {
+    if (!ss) return
+    let src: NMSource = {
+        bitrate: ss.br,
+        id: ss.fid,
+        size: ss.size,
+        volumeDelta: ss.vd
+    }
+    return src
+}
+function shortSong2Song (ss: NMShortSong) {
+    let song: NMSong = {
+        name: ss.name,
+        id: ss.id,
+        artists: ss.ar,
+        album: ss.al,
+        duration: ss.dt,
+        hMusic: shortSource2Source(ss.h),
+        mMusic: shortSource2Source(ss.m),
+        lMusic: shortSource2Source(ss.l),
+    }
+    return song
+}
+interface NMSongDetailResult {
+    songs: NMSong[]
 }
 interface NMSearchResult {
-    songs: NMSong[]
-    songCount: number
+    result: {
+        songs: NMShortSong[]
+        songCount: number
+    }
 }
 interface NMURLResult {
-    url: string
-    br: number
-    size: number
+    data: {
+        url: string
+        br: number
+        size: number
+    }[]
 }
 export class NeteaseMusicAPI implements MusicProvider {
     axios: AxiosInstance
@@ -74,16 +119,23 @@ export class NeteaseMusicAPI implements MusicProvider {
         let qs = Object.keys(data).map(k => `${encodeURIComponent(k)}=${encodeURIComponent(data[k])}`).join('&')
         return this.axios.post<T>(NETEASE_API_URL + api, qs)
     }
-    song2Music (song: NMSong): Music {
-        let ret: Music = {
+    shortSong2Music (song: NMShortSong): Music {
+        let ret: Music = new Music({
             name: song.name,
             author: song.ar.map(a => a.name).join('/'),
             duration: song.dt / 1000,
-            provider: this,
-            toString () {
-                return `${this.name} - ${this.author}`
-            }
-        }
+            provider: this
+        })
+        this.musicNM.set(ret, shortSong2Song(song))
+        return ret
+    }
+    song2Music (song: NMSong): Music {
+        let ret: Music = new Music({
+            name: song.name,
+            author: song.artists.map(a => a.name).join('/'),
+            duration: song.duration / 1000,
+            provider: this
+        })
         this.musicNM.set(ret, song)
         return ret
     }
@@ -104,7 +156,7 @@ export class NeteaseMusicAPI implements MusicProvider {
         }
         let ret: Music[] = []
         for (let song of data.result.songs) {
-            ret.push(this.song2Music(song))
+            ret.push(this.shortSong2Music(song))
         }
         return ret
     }
@@ -114,10 +166,20 @@ export class NeteaseMusicAPI implements MusicProvider {
             throw new Error('获取歌曲地址失败')
         }
         let br: number | undefined
-        if (song.m) {
-            br = song.m.br
+        if (song.mMusic) {
+            br = song.mMusic.bitrate
         }
         return await this.getMusicURLById(song.id, br)
+    }
+    async getMusicById (id: number): Promise<Music> {
+        const res = await this.axios.get<NMResponse<NMSongDetailResult>>(`http://music.163.com/api/song/detail/?ids=${encodeURIComponent(JSON.stringify([id]))}`)
+        const data = res.data
+        if (data.code !== NMResCode.OK) throw new Error('获取歌曲详情时失败')
+        if (data.songs.length > 0) {
+            return this.song2Music(data.songs[0])
+        } else {
+            throw new Error('获取歌曲详情个数为0')
+        }
     }
     async getMusicURLById (id: number, br?: number) {
         const obj = {
@@ -126,7 +188,7 @@ export class NeteaseMusicAPI implements MusicProvider {
             csrf_token: '',
         }
         const encData = aesRsaEncrypt(JSON.stringify(obj))
-        const res = await this.request<NMResponse<NMURLResult[]>>('/song/enhance/player/url', encData)
+        const res = await this.request<NMResponse<NMURLResult>>('/song/enhance/player/url', encData)
         const data = res.data.data
         if (res.data.code !== NMResCode.OK || data.length === 0) {
             throw new MusicError('获取歌曲地址失败')

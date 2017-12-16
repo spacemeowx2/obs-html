@@ -3,14 +3,15 @@ import { Param } from "common/param"
 import { NeteaseMusicAPI } from 'common/netease-music'
 import { MusicProvider, Music, MusicError, MusicListener } from 'common/music-interface'
 import { OrderSongComponent } from './order-song-view'
+import { Task } from './common/utils'
 
 class Command {
     constructor (public cmd: string, public args: string[], public from: string) {
     }
 }
 
-class SongRequest {
-    music?: Music
+export class SongRequest {
+    music: Music
     constructor (public from: string, public key: string) {
         //
     }
@@ -46,8 +47,9 @@ class SongPreload {
     url: string
     audio: HTMLAudioElement | undefined = new Audio()
     private lifetime: Promise<void>
-    constructor (private music: Music) {
+    constructor (private music: Music, private listener: MusicListener<SongRequest>) {
         this.lifetime = this.load()
+        this.audio!.volume = Param.get('volume', 0.5)
     }
     play () {
         this.lifetime = this.lifetime.then(() => this._play())
@@ -76,44 +78,22 @@ class SongPreload {
     }
     private async _play () {
         if (!this.audio) return
-        await this.audio.play()
+        const audio = this.audio
+        audio.ontimeupdate = () => {
+            this.listener.onProcess(this.music, audio.currentTime, audio.duration)
+        }
+        await audio.play()
     }
 }
-class SongListListener {
+
+class SongPlayer {
+    list = new SongList()
+
     currentReq: SongRequest
     preloads = new WeakMap<SongRequest, SongPreload>()
-    playQueue = Promise.resolve()
-    constructor (public list: SongList) {
-        list.onChange = () => this.onChange()
-    }
-    onChange () {
-        if (this.list.length > 0) {
-            if (this.currentReq === this.list[0]) {
-                return
-            }
-            const last = this.currentReq
-            const lastPreload = this.preloads.get(last)
-            if (lastPreload) {
-                lastPreload.stop()
-            }
-            const current = this.list[0]
-            if (!current.music) {
-                this.list.shift()
-                return
-            }
-            const pre = new SongPreload(current.music)
-            this.preloads.set(current, pre)
-            this.currentReq = current
-            this.playQueue = this.playQueue.then(() => pre.play())
-        }
-    }
-}
-
-class SongQueue {
-    list = new SongList()
-    listener = new SongListListener(this.list)
-    constructor (private providers: MusicProvider[]) {
-
+    playTask = new Task()
+    constructor (private providers: MusicProvider[], private listener: MusicListener<SongRequest>) {
+        this.list.onChange = () => this.onChange()
     }
     async searchSong (text: string) {
         let music: Music | null = null
@@ -130,13 +110,14 @@ class SongQueue {
         if (this.list.length >= Param.get('max', 10)) {
             throw new MusicError('当前列表满')
         }
-        const music = await this.searchSong(req.key)
-        if (music) {
+        if (!req.music) {
+            const music = await this.searchSong(req.key)
+            if (!music) {
+                throw new MusicError('没有找到这首歌')
+            }
             req.music = music
-            this.list.push(req)
-        } else {
-            throw new MusicError('没有找到这首歌')
         }
+        this.list.push(req)
     }
     revert (from: string) {
         let toDelete: SongRequest | undefined
@@ -147,17 +128,49 @@ class SongQueue {
             }
         }
         if (toDelete) {
-
+            const list = this.list
+            let idx = list.indexOf(toDelete)
+            for (let i = idx; i < list.length - 1; i++) {
+                list[i] = list[i + 1]
+            }
+            list.length -= 1
+            list.onChange()
         }
         throw new Error(`未找到 ${from} 的点歌记录`)
     }
+    private onChange () {
+        this.listener.onListUpdate(this.list.slice())
+        if (this.list.length > 0) {
+            if (this.currentReq === this.list[0]) {
+                return
+            }
+            const last = this.currentReq
+            const lastPreload = this.preloads.get(last)
+            if (lastPreload) {
+                lastPreload.stop()
+            }
+            const current = this.list[0]
+            if (!current.music) {
+                this.list.shift()
+                return
+            }
+            const pre = new SongPreload(current.music, this.listener)
+            this.preloads.set(current, pre)
+            this.currentReq = current
+            this.playTask.add(() => pre.play())
+            this.playTask.add(async () => {
+                this.list.shift()
+            })
+        }
+    }
 }
 
-class BilibiliOrderSong implements MusicListener {
-    queue: SongQueue
-    constructor (roomid: string, view: OrderSongComponent) {
-        const netease = new NeteaseMusicAPI('https://ynbjrj-80-fpelhu.myide.io/proxy.php')
-        this.queue = new SongQueue([netease])
+class BilibiliOrderSong implements MusicListener<SongRequest> {
+    queue: SongPlayer
+    netease: NeteaseMusicAPI
+    constructor (roomid: string, private view: OrderSongComponent) {
+        this.netease = new NeteaseMusicAPI('http://f7e9bb0b-e035-47fb-ac1c-338a86bb5663.coding.io/proxy.php')
+        this.queue = new SongPlayer([this.netease], this)
         if (roomid && roomid.length > 0) {
             let danmu = new BilibiliDanmaku(roomid)
             danmu.onDanmu = (danmu) => this.onDanmu(danmu)
@@ -167,7 +180,20 @@ class BilibiliOrderSong implements MusicListener {
     }
     async onCommand (cmd: Command) {
         console.log(cmd)
-        switch (cmd.cmd) {
+        switch (cmd.cmd.toUpperCase()) {
+            case '网易云ID':
+                try {
+                    let music = await this.netease.getMusicById(parseInt(cmd.args[0]))
+                    let req = new SongRequest(cmd.from, cmd.args[0])
+                    req.music = music
+                    await this.queue.add(req)
+                    this.view.queue = this.queue.list.slice()
+                } catch (e) {
+                    if (e instanceof MusicError) {
+                        this.toast(`${cmd.from} 点歌 ${cmd.args[0]} 失败: ${e.message}`)
+                    }
+                }
+                break
             case '点歌':
                 try {
                     await this.queue.add(new SongRequest(cmd.from, cmd.args[0]))
@@ -201,8 +227,12 @@ class BilibiliOrderSong implements MusicListener {
             this.onCommand(cmd)
         }
     }
-    onProcess () {
-
+    onListUpdate (list: SongRequest[]) {
+        this.view.queue = list
+    }
+    onProcess (music: Music, currentTime: number, durationTime: number) {
+        this.view.currentTime = currentTime
+        this.view.currentDuration = durationTime
     }
     toast (text: string) {
         console.log(text)

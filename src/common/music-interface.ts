@@ -1,16 +1,28 @@
 export class MusicError extends Error {
 }
-export interface Music {
+export class Music {
     name: string
     author: string
     duration?: number // in sec, to filter out the long music
     provider: MusicProvider
-    toString (): string
+    constructor (music?: Music) {
+        if (music) {
+            this.name = music.name
+            this.author = music.author
+            this.duration = music.duration
+            this.provider = music.provider
+        }
+    }
+    toString (): string {
+        return `${this.name} - ${this.author}`
+    }
 }
 export interface MusicProvider {
     search (key: string): Promise<Music[]>
+    getMusicById (id: number): Promise<Music>
     getMusicURL (music: Music): Promise<string>
 }
-export interface MusicListener {
-    onProcess (music: Music, pos: number, end: number): void
+export interface MusicListener<T> {
+    onProcess (music: Music, currentTime: number, durationTime: number): void
+    onListUpdate (list: T[]): void
 }

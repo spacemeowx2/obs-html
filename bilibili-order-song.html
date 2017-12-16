@@ -10,11 +10,14 @@
                 <div class="order-tips"> <!--marquee-->
                     <span v-text="tips"></span>
                 </div>
-                <div class="order-current">当前播放: {{currentSong}}</div>
+                <div class="order-current">当前播放: {{currentSong}} {{curFrom}}</div>
+                <div class="order-list-header">播放列表</div>
                 <div class="order-list">
-                    <ul>
-                        <li v-for="i in list"></li>
+                    <ul v-if="list.length > 0">
+                        <li v-for="(r, i) in list">{{i+1}}. {{r.music.toString()}} ({{r.from}})</li>
+                        <li v-if="listCount > showItems">...</li>
                     </ul>
+                    <div v-else>当前播放列表为空</div>
                 </div>
                 <div v-text="toast" v-show="toastShow" class="order-toast"></div>
             </div>
