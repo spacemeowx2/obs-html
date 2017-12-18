@@ -1,37 +1,16 @@
 <html>
     <head>
         <meta charset="utf-8">
-        <style>
-            body {
-                margin: 0;
-                padding: 0;
-                overflow: hidden;
-                font-family: Helvetica Neue,Helvetica,Arial,Microsoft YaHei,sans-serif;
-            }
-            ul {
-                margin: 0;
-                padding: 0;
-                list-style: none;
-            }
-            ul li {
-                color: white;
-                font-size: 30px;
-                /*text-shadow: rgb(0, 0, 0) 1px 0px 1px, rgb(0, 0, 0) 0px 1px 1px, rgb(0, 0, 0) 0px -1px 1px, rgb(0, 0, 0) -1px 0px 1px;*/
-            }
-            #danmaku {
-                width: 100%;
-                height: 100%;
-                position: relative;
-                background-color: rgba(0,0,0,0.25);
-            }
-            #list {
-                position: absolute;
-                left: 0;
-                bottom: 0;
-            }
-        </style>
+        <link rel="stylesheet" href="css/danmaku.css"></link>
     </head>
     <body>
+        <script type="text/x-template" id="danmaku-template">
+            <div class="danmaku">
+                <transition name="fade">
+                    <div v-text="toast" v-bind:style="{backgroundColor: toastColor}" v-show="toastShow" class="order-toast"></div>
+                </transition>
+            </div>
+        </script>
         <div id="danmaku">
             <ul id="list"></ul>
         </div>
