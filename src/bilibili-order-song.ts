@@ -3,7 +3,7 @@ import { Param } from "common/param"
 import { NeteaseMusicAPI } from 'common/netease-music'
 import { MusicProvider, Music, MusicError, MusicListener } from 'common/music-interface'
 import { OrderSongComponent, ToastColor } from './order-song-view'
-import { Task } from './common/utils'
+import { Task, once, delay } from './common/utils'
 
 class Command {
     constructor (public cmd: string, public args: string[], public from: string) {
@@ -11,7 +11,7 @@ class Command {
 }
 
 export class SongRequest {
-    music: Music
+    music: Music[]
     constructor (public from: string, public key: string) {
         //
     }
@@ -46,23 +46,8 @@ class SongList extends Array<SongRequest> {
 class SongPreload {
     url: string
     audio: HTMLAudioElement | undefined = new Audio()
-    private lifetime: Promise<void>
     constructor (private music: Music, private listener: MusicListener<SongRequest>) {
-        this.lifetime = this.load()
         this.audio!.volume = Param.get('volume', 0.5)
-    }
-    play () {
-        this.lifetime = this.lifetime.then(() => this._play())
-        this.lifetime = this.lifetime.then(() => this.untilStop())
-        this.lifetime = this.lifetime.catch((e) => {
-            if (e instanceof MusicError) {
-                this.listener.onError(e)
-            } else {
-                this.listener.onError(new MusicError('播放时发生未知错误'))
-            }
-            console.error(e)
-        })
-        return this.lifetime
     }
     stop () {
         if (this.audio) {
@@ -70,28 +55,41 @@ class SongPreload {
         }
         this.audio = undefined
     }
-    private async load () {
+    @once()
+    async load () {
         const music = this.music
         if (!this.audio) return
         const url = await music.provider.getMusicURL(music)
         this.audio.src = url
         this.audio.currentTime // in sec
     }
-    private untilStop () {
-        return new Promise<void>((res, rej) => {
+    @once()
+    async play () {
+        try {
+            await this.load()
+            if (!this.audio) return
+            const audio = this.audio
+            audio.ontimeupdate = () => {
+                this.listener.onProcess(this.music, audio.currentTime, audio.duration)
+            }
+            await audio.play()
+        } catch (e) {
+            if (e instanceof MusicError) {
+                this.listener.onError(e)
+            } else {
+                this.listener.onError(new MusicError('播放时发生未知错误'))
+            }
+            console.error(e)
+        }
+    }
+    async untilStop () {
+        await this.play()
+        await new Promise<void>((res, rej) => {
             if (!this.audio) return res()
             this.audio.onended = () => res()
             this.audio.onerror = () => res()
             this.audio.onpause = () => res()
         })
-    }
-    private async _play () {
-        if (!this.audio) return
-        const audio = this.audio
-        audio.ontimeupdate = () => {
-            this.listener.onProcess(this.music, audio.currentTime, audio.duration)
-        }
-        await audio.play()
     }
 }
 
@@ -105,11 +103,11 @@ class SongPlayer {
         this.list.onChange = () => this.onChange()
     }
     async searchSong (text: string) {
-        let music: Music | null = null
+        let music: Music[] | null = null
         for (let p of this.providers) {
             let list = await p.search(text)
             if (list.length > 0) {
-                music = list[0]
+                music = list
                 break
             }
         }
@@ -164,11 +162,24 @@ class SongPlayer {
                 this.list.shift()
                 return
             }
-            const pre = new SongPreload(current.music, this.listener)
-            this.preloads.set(current, pre)
-            this.currentReq = current
-            this.playTask.add(() => pre.play())
             this.playTask.add(async () => {
+                let success = false
+                for (let music of current.music) {
+                    const pre = new SongPreload(music, this.listener)
+                    try {
+                        await pre.load()
+                        this.preloads.set(current, pre)
+                        success = true
+                        this.currentReq = current
+                        await pre.play()
+                        break
+                    } catch (e) {
+
+                    }
+                }
+                if (!success) {
+                    this.listener.onError(new MusicError(`无法加载 ${current.from}: ${current.key}`))
+                }
                 this.list.shift()
             })
         } else {
@@ -184,6 +195,7 @@ class SongPlayer {
 class BilibiliOrderSong implements MusicListener<SongRequest> {
     queue: SongPlayer
     netease: NeteaseMusicAPI
+    freeTimeAlbum: number = -1
     constructor (roomid: string, private view: OrderSongComponent) {
         this.netease = new NeteaseMusicAPI('http://f7e9bb0b-e035-47fb-ac1c-338a86bb5663.coding.io/proxy.php')
         this.queue = new SongPlayer([this.netease], this)
@@ -201,7 +213,7 @@ class BilibiliOrderSong implements MusicListener<SongRequest> {
                 try {
                     let music = await this.netease.getMusicById(parseInt(cmd.args[0]))
                     let req = new SongRequest(cmd.from, cmd.args[0])
-                    req.music = music
+                    req.music = [music]
                     await this.queue.add(req)
                 } catch (e) {
                     if (e instanceof MusicError) {
@@ -266,6 +278,7 @@ function bilibiliOrderSong () {
     let view = new OrderSongComponent()
     view.$mount('#order-song')
     orderSong = new BilibiliOrderSong(roomid, view)
+    orderSong.freeTimeAlbum = Param.get('freeTimeAlbum', -1)
     // @ts-ignore
     window.orderView = view
     // @ts-ignore

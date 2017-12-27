@@ -3,6 +3,7 @@ define(["require", "exports"], function (require, exports) {
     Object.defineProperty(exports, "__esModule", { value: true });
     class Param {
         static get(name, def) {
+            name = name.toLowerCase();
             try {
                 let search = '';
                 search = location.search.substr(1);
@@ -12,7 +13,7 @@ define(["require", "exports"], function (require, exports) {
                 this.cache = new Map();
                 for (let s of search.split('&')) {
                     const p = s.split('=');
-                    this.cache.set(decodeURIComponent(p[0]), decodeURIComponent(p[1]));
+                    this.cache.set(decodeURIComponent(p[0]).toLowerCase(), decodeURIComponent(p[1]));
                 }
                 return this.getFromCache(name, def);
             }

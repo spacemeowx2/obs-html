@@ -3,6 +3,7 @@ export class Param {
     static search: string = ''
     static cache: Map<string, string> = new Map()
     static get<T extends acceptable> (name: string, def: T) {
+        name = name.toLowerCase()
         try {
             let search = ''
             search = location.search.substr(1)
@@ -12,7 +13,7 @@ export class Param {
             this.cache = new Map()
             for (let s of search.split('&')) {
                 const p = s.split('=')
-                this.cache.set(decodeURIComponent(p[0]), decodeURIComponent(p[1]))
+                this.cache.set(decodeURIComponent(p[0]).toLowerCase(), decodeURIComponent(p[1]))
             }
             return this.getFromCache(name, def)
         } catch (e) {

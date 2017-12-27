@@ -1,3 +1,9 @@
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -55,22 +61,7 @@ define(["require", "exports", "common/bilibili-danmaku", "common/param", "common
             this.music = music;
             this.listener = listener;
             this.audio = new Audio();
-            this.lifetime = this.load();
             this.audio.volume = param_1.Param.get('volume', 0.5);
-        }
-        play() {
-            this.lifetime = this.lifetime.then(() => this._play());
-            this.lifetime = this.lifetime.then(() => this.untilStop());
-            this.lifetime = this.lifetime.catch((e) => {
-                if (e instanceof music_interface_1.MusicError) {
-                    this.listener.onError(e);
-                }
-                else {
-                    this.listener.onError(new music_interface_1.MusicError('播放时发生未知错误'));
-                }
-                console.error(e);
-            });
-            return this.lifetime;
         }
         stop() {
             if (this.audio) {
@@ -88,27 +79,48 @@ define(["require", "exports", "common/bilibili-danmaku", "common/param", "common
                 this.audio.currentTime; // in sec
             });
         }
-        untilStop() {
-            return new Promise((res, rej) => {
-                if (!this.audio)
-                    return res();
-                this.audio.onended = () => res();
-                this.audio.onerror = () => res();
-                this.audio.onpause = () => res();
+        play() {
+            return __awaiter(this, void 0, void 0, function* () {
+                try {
+                    yield this.load();
+                    if (!this.audio)
+                        return;
+                    const audio = this.audio;
+                    audio.ontimeupdate = () => {
+                        this.listener.onProcess(this.music, audio.currentTime, audio.duration);
+                    };
+                    yield audio.play();
+                }
+                catch (e) {
+                    if (e instanceof music_interface_1.MusicError) {
+                        this.listener.onError(e);
+                    }
+                    else {
+                        this.listener.onError(new music_interface_1.MusicError('播放时发生未知错误'));
+                    }
+                    console.error(e);
+                }
             });
         }
-        _play() {
+        untilStop() {
             return __awaiter(this, void 0, void 0, function* () {
-                if (!this.audio)
-                    return;
-                const audio = this.audio;
-                audio.ontimeupdate = () => {
-                    this.listener.onProcess(this.music, audio.currentTime, audio.duration);
-                };
-                yield audio.play();
+                yield this.play();
+                yield new Promise((res, rej) => {
+                    if (!this.audio)
+                        return res();
+                    this.audio.onended = () => res();
+                    this.audio.onerror = () => res();
+                    this.audio.onpause = () => res();
+                });
             });
         }
     }
+    __decorate([
+        utils_1.once()
+    ], SongPreload.prototype, "load", null);
+    __decorate([
+        utils_1.once()
+    ], SongPreload.prototype, "play", null);
     class SongPlayer {
         constructor(providers, listener) {
             this.providers = providers;
@@ -124,7 +136,7 @@ define(["require", "exports", "common/bilibili-danmaku", "common/param", "common
                 for (let p of this.providers) {
                     let list = yield p.search(text);
                     if (list.length > 0) {
-                        music = list[0];
+                        music = list;
                         break;
                     }
                 }
@@ -182,11 +194,24 @@ define(["require", "exports", "common/bilibili-danmaku", "common/param", "common
                     this.list.shift();
                     return;
                 }
-                const pre = new SongPreload(current.music, this.listener);
-                this.preloads.set(current, pre);
-                this.currentReq = current;
-                this.playTask.add(() => pre.play());
                 this.playTask.add(() => __awaiter(this, void 0, void 0, function* () {
+                    let success = false;
+                    for (let music of current.music) {
+                        const pre = new SongPreload(music, this.listener);
+                        try {
+                            yield pre.load();
+                            this.preloads.set(current, pre);
+                            success = true;
+                            this.currentReq = current;
+                            yield pre.play();
+                            break;
+                        }
+                        catch (e) {
+                        }
+                    }
+                    if (!success) {
+                        this.listener.onError(new music_interface_1.MusicError(`无法加载 ${current.from}: ${current.key}`));
+                    }
                     this.list.shift();
                 }));
             }
@@ -202,6 +227,7 @@ define(["require", "exports", "common/bilibili-danmaku", "common/param", "common
     class BilibiliOrderSong {
         constructor(roomid, view) {
             this.view = view;
+            this.freeTimeAlbum = -1;
             this.netease = new netease_music_1.NeteaseMusicAPI('http://f7e9bb0b-e035-47fb-ac1c-338a86bb5663.coding.io/proxy.php');
             this.queue = new SongPlayer([this.netease], this);
             if (roomid && roomid.length > 0) {
@@ -220,7 +246,7 @@ define(["require", "exports", "common/bilibili-danmaku", "common/param", "common
                         try {
                             let music = yield this.netease.getMusicById(parseInt(cmd.args[0]));
                             let req = new SongRequest(cmd.from, cmd.args[0]);
-                            req.music = music;
+                            req.music = [music];
                             yield this.queue.add(req);
                         }
                         catch (e) {
@@ -289,6 +315,7 @@ define(["require", "exports", "common/bilibili-danmaku", "common/param", "common
         let view = new order_song_view_1.OrderSongComponent();
         view.$mount('#order-song');
         orderSong = new BilibiliOrderSong(roomid, view);
+        orderSong.freeTimeAlbum = param_1.Param.get('freeTimeAlbum', -1);
         // @ts-ignore
         window.orderView = view;
         // @ts-ignore
