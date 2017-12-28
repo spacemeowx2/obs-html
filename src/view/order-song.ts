@@ -1,8 +1,8 @@
 import Vue from 'vue'
 import Component from 'vue-class-component'
-import { Music } from './common/music-interface'
-import { SongRequest } from './bilibili-order-song'
-import { Task, delay } from './common/utils'
+import { Music } from '../common/music-interface'
+import { SongRequest } from '../bilibili-order-song'
+import { Task, delay } from '../common/utils'
 function padLeft (s: string, padLen: number, padStr: string) {
     if (padStr.length !== 1) throw new Error('length of padstr should be 1')
     const toPadLen = padLen - s.length

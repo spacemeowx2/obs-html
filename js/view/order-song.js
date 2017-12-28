@@ -12,7 +12,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-define(["require", "exports", "vue", "vue-class-component", "./common/utils"], function (require, exports, vue_1, vue_class_component_1, utils_1) {
+define(["require", "exports", "vue", "vue-class-component", "../common/utils"], function (require, exports, vue_1, vue_class_component_1, utils_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function padLeft(s, padLen, padStr) {

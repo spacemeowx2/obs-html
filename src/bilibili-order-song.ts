@@ -2,7 +2,7 @@ import { BilibiliDanmaku, DanmuInfo } from "common/bilibili-danmaku"
 import { Param } from "common/param"
 import { NeteaseMusicAPI } from 'common/netease-music'
 import { MusicProvider, Music, MusicError, MusicListener } from 'common/music-interface'
-import { OrderSongComponent, ToastColor } from './order-song-view'
+import { OrderSongComponent, ToastColor } from './view/order-song'
 import { Task, once, delay } from './common/utils'
 
 class Command {

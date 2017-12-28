@@ -12,7 +12,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-define(["require", "exports", "common/bilibili-danmaku", "common/param", "common/netease-music", "common/music-interface", "./order-song-view", "./common/utils"], function (require, exports, bilibili_danmaku_1, param_1, netease_music_1, music_interface_1, order_song_view_1, utils_1) {
+define(["require", "exports", "common/bilibili-danmaku", "common/param", "common/netease-music", "common/music-interface", "./view/order-song", "./common/utils"], function (require, exports, bilibili_danmaku_1, param_1, netease_music_1, music_interface_1, order_song_1, utils_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     class Command {
@@ -314,7 +314,7 @@ define(["require", "exports", "common/bilibili-danmaku", "common/param", "common
             }
         }
         toast(text, success = false) {
-            this.view.showToast(text, success ? order_song_view_1.ToastColor.Success : order_song_view_1.ToastColor.Warning);
+            this.view.showToast(text, success ? order_song_1.ToastColor.Success : order_song_1.ToastColor.Warning);
         }
     }
     let orderSong;
@@ -328,7 +328,7 @@ define(["require", "exports", "common/bilibili-danmaku", "common/param", "common
                 playlsit = yield netease.getPlaylist(playlistId);
             }
             let roomid = param_1.Param.get('roomid', '');
-            let view = new order_song_view_1.OrderSongComponent();
+            let view = new order_song_1.OrderSongComponent();
             view.$mount('#order-song');
             orderSong = new BilibiliOrderSong(roomid, view, {
                 freePlaylist: playlsit,
