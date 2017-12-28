@@ -1,14 +1,20 @@
 <html>
     <head>
         <meta charset="utf-8">
+        <script src="requirejs.conf.js"></script>
         <link rel="stylesheet" href="css/danmaku.css"></link>
     </head>
     <body>
         <script type="text/x-template" id="danmaku-template">
             <div class="danmaku">
-                <transition name="fade">
-                    <div v-text="toast" v-bind:style="{backgroundColor: toastColor}" v-show="toastShow" class="order-toast"></div>
-                </transition>
+                
+            </div>
+        </script>
+        <script type="text/x-template" id="danmaku-list-template">
+            <div class="danmaku-list">
+                <transition-group name="fade">
+                    <danmaku v-for='i in list' v-key='danmakuKey(i)' />
+                </transition-group>
             </div>
         </script>
         <div id="danmaku">
