@@ -29,6 +29,7 @@ ul li {
     color: #fff;
     font-size: 30px;
     -webkit-text-stroke: 1px rgba(0,0,0,0.5);
+    font-weight: bold;
     display: flex;
     justify-content: space-between;
 }

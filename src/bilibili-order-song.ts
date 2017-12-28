@@ -60,6 +60,7 @@ class SongPreload {
         const music = this.music
         if (!this.audio) return
         const url = await music.provider.getMusicURL(music)
+        if (!this.audio) return
         this.audio.src = url
         this.audio.currentTime // in sec
     }
@@ -85,12 +86,13 @@ class SongPreload {
     @once()
     async untilStop () {
         await this.play()
-        await new Promise<void>((res, rej) => {
+        await (new Promise<void>((res, rej) => {
             if (!this.audio) return res()
             this.audio.onended = () => res()
             this.audio.onerror = () => res()
             this.audio.onpause = () => res()
-        })
+        }))
+        console.log('wtf')
     }
 }
 
@@ -149,6 +151,7 @@ class SongPlayer {
     }
     private onChange () {
         this.listener.onListUpdate(this.list.slice())
+        console.log('len', this.list.length)
         if (this.list.length > 0) {
             if (this.currentReq === this.list[0]) {
                 return
@@ -164,17 +167,12 @@ class SongPlayer {
                 return
             }
             this.playTask.add(async () => {
-                let success = false
                 const pre = new SongPreload(current.music, this.listener)
                 await pre.load()
                 this.preloads.set(current, pre)
-                success = true
                 this.currentReq = current
                 await pre.play()
                 await pre.untilStop()
-                if (!success) {
-                    this.listener.onError(new MusicError(`无法加载 ${current.from}: ${current.key}`))
-                }
                 this.list.shift()
             })
         } else {

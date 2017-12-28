@@ -38,64 +38,87 @@ export class Task {
 export function isThenable (v: any) {
     return typeof v.then === 'function'
 }
+const StateNone = 0
+const StatePending = 1
+const StateDone = 2
+class OnceClass {
+    static map = new Map<string, WeakMap<any, OnceClass>>()
+    static get (target: any, propertyKey: string): OnceClass {
+        if (!this.map.has(propertyKey)) {
+            this.map.set(propertyKey, new WeakMap())
+        }
+        const p = this.map.get(propertyKey)!
+        if (!p.has(target)) {
+            p.set(target, new this(target))
+        }
+        return p.get(target)!
+    }
+    state = StateNone
+    lastRet: any
+    lastErr: any
+    resolve: Function[] | undefined = []
+    reject: Function[] | undefined = []
+    constructor (private that: any) {}
+    thenRunner (funcs: Function[], value: any) {
+        for (let f of funcs) {
+            f(value)
+        }
+        this.state = StateDone
+        this.resolve = undefined
+        this.reject = undefined
+    }
+    run (oriMethod: Function, ...args: any[]) {
+        if (this.state === StateDone) {
+            if (this.lastErr) {
+                throw this.lastErr
+            }
+            return this.lastRet
+        } else if (this.state === StatePending) {
+            return new Promise((res, rej) => {
+                this.resolve!.push(res)
+                this.reject!.push(rej)
+            })
+        } else if (this.state === StateNone) {
+            let ret
+            try {
+                ret = oriMethod.call(this.that, ...args)
+            } catch (e) {
+                this.lastErr = e
+                throw e
+            }
+            if (isThenable(ret)) {
+                this.state = StatePending
+                ret.then((r: any) => {
+                    this.thenRunner(this.resolve!, r)
+                    this.lastRet = r
+                }, (r: any) => {
+                    this.thenRunner(this.reject!, r)
+                    this.lastErr = r
+                })
+                return new Promise((res, rej) => {
+                    this.resolve!.push(res)
+                    this.reject!.push(rej)
+                })
+            }
+            this.state = StateDone
+            this.lastRet = ret
+            return ret
+        } else {
+            throw new Error('Wrong state')
+        }
+    }
+}
 export function once() {
-    const StateNone = 0
-    const StatePending = 1
-    const StateDone = 2
     return (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
         let state = StateNone
         let lastRet: any
         let lastErr: any
         let resolve: Function[] | undefined = []
         let reject: Function[] | undefined  = []
-        function thenRunner (funcs: Function[], value: any) {
-            for (let f of funcs) {
-                f(value)
-            }
-            state = StateDone
-            resolve = undefined
-            reject = undefined
-        }
         const oriMethod: Function = descriptor.value
         descriptor.value = function (...args: any[]) {
-            if (state === StateDone) {
-                if (lastErr) {
-                    throw lastErr
-                }
-                return lastRet
-            } else if (state === StatePending) {
-                return new Promise((res, rej) => {
-                    resolve!.push(res)
-                    reject!.push(rej)
-                })
-            } else if (state === StateNone) {
-                let ret
-                try {
-                    ret = oriMethod.call(this, ...args)
-                } catch (e) {
-                    lastErr = e
-                    throw e
-                }
-                if (isThenable(ret)) {
-                    state = StatePending
-                    ret.then((r: any) => {
-                        thenRunner(resolve!, r)
-                        lastRet = r
-                    }, (r: any) => {
-                        thenRunner(reject!, r)
-                        lastErr = r
-                    })
-                    return new Promise((res, rej) => {
-                        resolve!.push(res)
-                        reject!.push(rej)
-                    })
-                }
-                state = StateDone
-                lastRet = ret
-                return ret
-            } else {
-                throw new Error('Wrong state')
-            }
+            let o = OnceClass.get(this, propertyKey)
+            return o.run(oriMethod, ...args)
         }
     }
 }

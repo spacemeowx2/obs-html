@@ -75,6 +75,8 @@ define(["require", "exports", "./common/bilibili-danmaku", "./common/param", "./
                 if (!this.audio)
                     return;
                 const url = yield music.provider.getMusicURL(music);
+                if (!this.audio)
+                    return;
                 this.audio.src = url;
                 this.audio.currentTime; // in sec
             });
@@ -105,13 +107,14 @@ define(["require", "exports", "./common/bilibili-danmaku", "./common/param", "./
         untilStop() {
             return __awaiter(this, void 0, void 0, function* () {
                 yield this.play();
-                yield new Promise((res, rej) => {
+                yield (new Promise((res, rej) => {
                     if (!this.audio)
                         return res();
                     this.audio.onended = () => res();
                     this.audio.onerror = () => res();
                     this.audio.onpause = () => res();
-                });
+                }));
+                console.log('wtf');
             });
         }
     }
@@ -184,6 +187,7 @@ define(["require", "exports", "./common/bilibili-danmaku", "./common/param", "./
         }
         onChange() {
             this.listener.onListUpdate(this.list.slice());
+            console.log('len', this.list.length);
             if (this.list.length > 0) {
                 if (this.currentReq === this.list[0]) {
                     return;
@@ -199,17 +203,12 @@ define(["require", "exports", "./common/bilibili-danmaku", "./common/param", "./
                     return;
                 }
                 this.playTask.add(() => __awaiter(this, void 0, void 0, function* () {
-                    let success = false;
                     const pre = new SongPreload(current.music, this.listener);
                     yield pre.load();
                     this.preloads.set(current, pre);
-                    success = true;
                     this.currentReq = current;
                     yield pre.play();
                     yield pre.untilStop();
-                    if (!success) {
-                        this.listener.onError(new music_interface_1.MusicError(`无法加载 ${current.from}: ${current.key}`));
-                    }
                     this.list.shift();
                 }));
             }

@@ -1,7 +1,7 @@
 .order-song {
     width: 500px;
     height: 100%;
-    background-color: rgba(0,0,0,0.25);
+    /* background-color: rgba(0,0,0,0.25); */
     position: relative;
 }
 
@@ -58,6 +58,8 @@ html, body {
 body {
     overflow: hidden;
     font-size: 25px;
+    font-weight: bolder;
     color: white;
     font-family: Helvetica Neue,Helvetica,Arial,Microsoft YaHei,sans-serif;
+    -webkit-text-stroke: 1px rgba(0,0,0,1);
 }
