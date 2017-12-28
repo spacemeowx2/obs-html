@@ -11,7 +11,7 @@ class Command {
 }
 
 export class SongRequest {
-    music: Music[]
+    music: Music
     constructor (public from: string, public key: string) {
         //
     }
@@ -82,6 +82,7 @@ class SongPreload {
             console.error(e)
         }
     }
+    @once()
     async untilStop () {
         await this.play()
         await new Promise<void>((res, rej) => {
@@ -103,12 +104,12 @@ class SongPlayer {
         this.list.onChange = () => this.onChange()
     }
     async searchSong (text: string) {
-        let music: Music[] | null = null
+        let music: Music | null = null
         for (let p of this.providers) {
-            let list = await p.search(text)
-            if (list.length > 0) {
-                music = list
-                break
+            try {
+                music = await p.search(text)
+            } catch (e) {
+                console.error(p.name, '失败')
             }
         }
         return music
@@ -164,19 +165,13 @@ class SongPlayer {
             }
             this.playTask.add(async () => {
                 let success = false
-                for (let music of current.music) {
-                    const pre = new SongPreload(music, this.listener)
-                    try {
-                        await pre.load()
-                        this.preloads.set(current, pre)
-                        success = true
-                        this.currentReq = current
-                        await pre.play()
-                        break
-                    } catch (e) {
-
-                    }
-                }
+                const pre = new SongPreload(current.music, this.listener)
+                await pre.load()
+                this.preloads.set(current, pre)
+                success = true
+                this.currentReq = current
+                await pre.play()
+                await pre.untilStop()
                 if (!success) {
                     this.listener.onError(new MusicError(`无法加载 ${current.from}: ${current.key}`))
                 }
@@ -191,19 +186,33 @@ class SongPlayer {
         }
     }
 }
-
+interface OrderSongConfig {
+    freePlaylist?: Music[]
+    proxy?: string
+}
 class BilibiliOrderSong implements MusicListener<SongRequest> {
-    queue: SongPlayer
+    player: SongPlayer
     netease: NeteaseMusicAPI
-    freeTimeAlbum: number = -1
-    constructor (roomid: string, private view: OrderSongComponent) {
-        this.netease = new NeteaseMusicAPI('http://f7e9bb0b-e035-47fb-ac1c-338a86bb5663.coding.io/proxy.php')
-        this.queue = new SongPlayer([this.netease], this)
+    freeTimePlaylist: Music[]
+    constructor (roomid: string, private view: OrderSongComponent, {freePlaylist, proxy}: OrderSongConfig = {}) {
+        this.netease = new NeteaseMusicAPI(proxy)
+        this.player = new SongPlayer([this.netease], this)
         if (roomid && roomid.length > 0) {
             let danmu = new BilibiliDanmaku(roomid)
             danmu.onDanmu = (danmu) => this.onDanmu(danmu)
         } else {
             console.error('no roomid')
+        }
+        if (freePlaylist) {
+            this.freeTimePlaylist = freePlaylist
+            setInterval(() => {
+                if (!this.player.playTask.busy) {
+                    // 空闲点歌
+                    let req = new SongRequest('空闲歌单', '')
+                    req.music = freePlaylist[Math.floor(Math.random() * freePlaylist.length)]
+                    this.player.add(req)
+                }
+            }, 3000)
         }
     }
     async onCommand (cmd: Command) {
@@ -213,8 +222,8 @@ class BilibiliOrderSong implements MusicListener<SongRequest> {
                 try {
                     let music = await this.netease.getMusicById(parseInt(cmd.args[0]))
                     let req = new SongRequest(cmd.from, cmd.args[0])
-                    req.music = [music]
-                    await this.queue.add(req)
+                    req.music = music
+                    await this.player.add(req)
                 } catch (e) {
                     if (e instanceof MusicError) {
                         this.toast(`${cmd.from} 点歌 ${cmd.args[0]} 失败: ${e.message}`)
@@ -223,7 +232,7 @@ class BilibiliOrderSong implements MusicListener<SongRequest> {
                 break
             case '点歌':
                 try {
-                    await this.queue.add(new SongRequest(cmd.from, cmd.args[0]))
+                    await this.player.add(new SongRequest(cmd.from, cmd.args[0]))
                     this.toast(`${cmd.from} 点歌成功`, true)
                 } catch (e) {
                     if (e instanceof MusicError) {
@@ -233,7 +242,7 @@ class BilibiliOrderSong implements MusicListener<SongRequest> {
                 break
             case '撤回':
                 try {
-                    this.queue.revert(cmd.from)
+                    this.player.revert(cmd.from)
                     this.toast(`${cmd.from} 撤回成功`, true)
                 } catch (e) {
                     if (e instanceof MusicError) {
@@ -251,7 +260,7 @@ class BilibiliOrderSong implements MusicListener<SongRequest> {
             txt = txt.trim()
             txt = txt.substring(1)
             txt = txt.replace(/(，)/g, ',')
-            const args = txt.split(',')
+            const args = txt.split(',').map(i => i.trim())
             const cmd = new Command(args[0], args.slice(1), danmu.lb)
             this.onCommand(cmd)
         }
@@ -273,12 +282,21 @@ class BilibiliOrderSong implements MusicListener<SongRequest> {
     }
 }
 let orderSong: BilibiliOrderSong
-function bilibiliOrderSong () {
+async function bilibiliOrderSong () {
+    const proxy = 'http://f7e9bb0b-e035-47fb-ac1c-338a86bb5663.coding.io/proxy.php'
+    const netease = new NeteaseMusicAPI(proxy)
+    const playlistId = Param.get('freePlaylist', -1)
+    let playlsit: Music[] | undefined = undefined
+    if (playlistId !== -1) {
+        playlsit = await netease.getPlaylist(playlistId)
+    }
     let roomid = Param.get('roomid', '')
     let view = new OrderSongComponent()
     view.$mount('#order-song')
-    orderSong = new BilibiliOrderSong(roomid, view)
-    orderSong.freeTimeAlbum = Param.get('freeTimeAlbum', -1)
+    orderSong = new BilibiliOrderSong(roomid, view, {
+        freePlaylist: playlsit,
+        proxy
+    })
     // @ts-ignore
     window.orderView = view
     // @ts-ignore

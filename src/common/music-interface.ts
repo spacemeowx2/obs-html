@@ -18,7 +18,8 @@ export class Music {
     }
 }
 export interface MusicProvider {
-    search (key: string): Promise<Music[]>
+    name: string
+    search (key: string): Promise<Music>
     getMusicById (id: number): Promise<Music>
     getMusicURL (music: Music): Promise<string>
 }

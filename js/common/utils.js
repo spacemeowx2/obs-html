@@ -12,6 +12,7 @@ define(["require", "exports"], function (require, exports) {
     exports.TaskError = TaskError;
     class Task {
         constructor() {
+            this._busy = false;
             this.chain = Promise.resolve();
             this.checkAbort = () => {
                 if (this.waitAbort) {
@@ -20,11 +21,20 @@ define(["require", "exports"], function (require, exports) {
                 }
             };
         }
+        get busy() {
+            return this._busy;
+        }
         add(promiseFactory) {
             if (this.waitAbort) {
                 throw new TaskError('Task has been aborted');
             }
+            this.chain = this.chain.then(() => {
+                this._busy = true;
+            });
             this.chain = this.chain.then(promiseFactory).then(this.checkAbort);
+            this.chain = this.chain.then(() => {
+                this._busy = false;
+            });
         }
         abort() {
             return new Promise((res, rej) => {

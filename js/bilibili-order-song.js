@@ -121,6 +121,9 @@ define(["require", "exports", "common/bilibili-danmaku", "common/param", "common
     __decorate([
         utils_1.once()
     ], SongPreload.prototype, "play", null);
+    __decorate([
+        utils_1.once()
+    ], SongPreload.prototype, "untilStop", null);
     class SongPlayer {
         constructor(providers, listener) {
             this.providers = providers;
@@ -134,10 +137,11 @@ define(["require", "exports", "common/bilibili-danmaku", "common/param", "common
             return __awaiter(this, void 0, void 0, function* () {
                 let music = null;
                 for (let p of this.providers) {
-                    let list = yield p.search(text);
-                    if (list.length > 0) {
-                        music = list;
-                        break;
+                    try {
+                        music = yield p.search(text);
+                    }
+                    catch (e) {
+                        console.error(p.name, '失败');
                     }
                 }
                 return music;
@@ -196,19 +200,13 @@ define(["require", "exports", "common/bilibili-danmaku", "common/param", "common
                 }
                 this.playTask.add(() => __awaiter(this, void 0, void 0, function* () {
                     let success = false;
-                    for (let music of current.music) {
-                        const pre = new SongPreload(music, this.listener);
-                        try {
-                            yield pre.load();
-                            this.preloads.set(current, pre);
-                            success = true;
-                            this.currentReq = current;
-                            yield pre.play();
-                            break;
-                        }
-                        catch (e) {
-                        }
-                    }
+                    const pre = new SongPreload(current.music, this.listener);
+                    yield pre.load();
+                    this.preloads.set(current, pre);
+                    success = true;
+                    this.currentReq = current;
+                    yield pre.play();
+                    yield pre.untilStop();
                     if (!success) {
                         this.listener.onError(new music_interface_1.MusicError(`无法加载 ${current.from}: ${current.key}`));
                     }
@@ -225,17 +223,27 @@ define(["require", "exports", "common/bilibili-danmaku", "common/param", "common
         }
     }
     class BilibiliOrderSong {
-        constructor(roomid, view) {
+        constructor(roomid, view, { freePlaylist, proxy } = {}) {
             this.view = view;
-            this.freeTimeAlbum = -1;
-            this.netease = new netease_music_1.NeteaseMusicAPI('http://f7e9bb0b-e035-47fb-ac1c-338a86bb5663.coding.io/proxy.php');
-            this.queue = new SongPlayer([this.netease], this);
+            this.netease = new netease_music_1.NeteaseMusicAPI(proxy);
+            this.player = new SongPlayer([this.netease], this);
             if (roomid && roomid.length > 0) {
                 let danmu = new bilibili_danmaku_1.BilibiliDanmaku(roomid);
                 danmu.onDanmu = (danmu) => this.onDanmu(danmu);
             }
             else {
                 console.error('no roomid');
+            }
+            if (freePlaylist) {
+                this.freeTimePlaylist = freePlaylist;
+                setInterval(() => {
+                    if (!this.player.playTask.busy) {
+                        // 空闲点歌
+                        let req = new SongRequest('空闲歌单', '');
+                        req.music = freePlaylist[Math.floor(Math.random() * freePlaylist.length)];
+                        this.player.add(req);
+                    }
+                }, 3000);
             }
         }
         onCommand(cmd) {
@@ -246,8 +254,8 @@ define(["require", "exports", "common/bilibili-danmaku", "common/param", "common
                         try {
                             let music = yield this.netease.getMusicById(parseInt(cmd.args[0]));
                             let req = new SongRequest(cmd.from, cmd.args[0]);
-                            req.music = [music];
-                            yield this.queue.add(req);
+                            req.music = music;
+                            yield this.player.add(req);
                         }
                         catch (e) {
                             if (e instanceof music_interface_1.MusicError) {
@@ -257,7 +265,7 @@ define(["require", "exports", "common/bilibili-danmaku", "common/param", "common
                         break;
                     case '点歌':
                         try {
-                            yield this.queue.add(new SongRequest(cmd.from, cmd.args[0]));
+                            yield this.player.add(new SongRequest(cmd.from, cmd.args[0]));
                             this.toast(`${cmd.from} 点歌成功`, true);
                         }
                         catch (e) {
@@ -268,7 +276,7 @@ define(["require", "exports", "common/bilibili-danmaku", "common/param", "common
                         break;
                     case '撤回':
                         try {
-                            this.queue.revert(cmd.from);
+                            this.player.revert(cmd.from);
                             this.toast(`${cmd.from} 撤回成功`, true);
                         }
                         catch (e) {
@@ -288,7 +296,7 @@ define(["require", "exports", "common/bilibili-danmaku", "common/param", "common
                 txt = txt.trim();
                 txt = txt.substring(1);
                 txt = txt.replace(/(，)/g, ',');
-                const args = txt.split(',');
+                const args = txt.split(',').map(i => i.trim());
                 const cmd = new Command(args[0], args.slice(1), danmu.lb);
                 this.onCommand(cmd);
             }
@@ -311,15 +319,26 @@ define(["require", "exports", "common/bilibili-danmaku", "common/param", "common
     }
     let orderSong;
     function bilibiliOrderSong() {
-        let roomid = param_1.Param.get('roomid', '');
-        let view = new order_song_view_1.OrderSongComponent();
-        view.$mount('#order-song');
-        orderSong = new BilibiliOrderSong(roomid, view);
-        orderSong.freeTimeAlbum = param_1.Param.get('freeTimeAlbum', -1);
-        // @ts-ignore
-        window.orderView = view;
-        // @ts-ignore
-        window.orderSong = orderSong;
+        return __awaiter(this, void 0, void 0, function* () {
+            const proxy = 'http://f7e9bb0b-e035-47fb-ac1c-338a86bb5663.coding.io/proxy.php';
+            const netease = new netease_music_1.NeteaseMusicAPI(proxy);
+            const playlistId = param_1.Param.get('freePlaylist', -1);
+            let playlsit = undefined;
+            if (playlistId !== -1) {
+                playlsit = yield netease.getPlaylist(playlistId);
+            }
+            let roomid = param_1.Param.get('roomid', '');
+            let view = new order_song_view_1.OrderSongComponent();
+            view.$mount('#order-song');
+            orderSong = new BilibiliOrderSong(roomid, view, {
+                freePlaylist: playlsit,
+                proxy
+            });
+            // @ts-ignore
+            window.orderView = view;
+            // @ts-ignore
+            window.orderSong = orderSong;
+        });
     }
     bilibiliOrderSong();
 });

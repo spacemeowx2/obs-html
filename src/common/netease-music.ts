@@ -10,6 +10,16 @@ interface NMResponseCode {
     code: NMResCode
 }
 type NMResponse<T> = NMResponseCode & T
+interface NMPlaylist {
+    id: number
+    name: string
+    description: string
+    tags: string[]
+    tracks: NMShortSong[]
+}
+interface NMPlaylistDetail {
+    playlist: NMPlaylist
+}
 interface NMAlumn {
     id: number
     name: string
@@ -40,6 +50,7 @@ interface NMSong { //mdzz
     hMusic?: NMSource
     mMusic?: NMSource
     lMusic?: NMSource
+    url?: string
 }
 interface NMShortSong {
     name: string
@@ -91,6 +102,7 @@ interface NMURLResult {
     }[]
 }
 export class NeteaseMusicAPI implements MusicProvider {
+    name = '网易云音乐'
     axios: AxiosInstance
     musicNM = new WeakMap<Music,  NMSong>()
     constructor (proxy = 'https://0579dc8a-8835-4932-9253-e2143ec07833.coding.io/proxy.php') {
@@ -139,7 +151,22 @@ export class NeteaseMusicAPI implements MusicProvider {
         this.musicNM.set(ret, song)
         return ret
     }
-    async search (key: string): Promise<Music[]> {
+    async getPlaylist (id: string): Promise<Music[]> {
+        const obj = {
+            id,
+            n: 1000,
+            csrf_token: ''
+        }
+        const encData = aesRsaEncrypt(JSON.stringify(obj))
+        const res = await this.request<NMResponse<NMPlaylistDetail>>(`/v3/playlist/detail`, encData)
+        const data = res.data
+        let ret: Music[] = []
+        for (let song of data.playlist.tracks) {
+            ret.push(this.shortSong2Music(song))
+        }
+        return ret
+    }
+    async search (key: string): Promise<Music> {
         const limit = 30
         const page = 1
         const obj = {
@@ -158,18 +185,33 @@ export class NeteaseMusicAPI implements MusicProvider {
         for (let song of data.result.songs) {
             ret.push(this.shortSong2Music(song))
         }
-        return ret
+        for (let m of ret) {
+            try {
+                const url = await this.getMusicURL(m)
+                if (/^https?:\/\//.test(url)) {
+                    return m
+                }
+            } catch (e) {
+                console.error('无效的搜索结果', m.name, m.author, e)
+            }
+        }
+        throw new MusicError('无可播放的歌')
     }
     async getMusicURL (music: Music): Promise<string> {
         const song = this.musicNM.get(music)
         if (!song) {
             throw new Error('获取歌曲地址失败')
         }
+        if (song.url) {
+            return song.url
+        }
         let br: number | undefined
         if (song.mMusic) {
             br = song.mMusic.bitrate
         }
-        return await this.getMusicURLById(song.id, br)
+        const url = await this.getMusicURLById(song.id, br)
+        song.url = url
+        return url
     }
     async getMusicById (id: number): Promise<Music> {
         const res = await this.axios.get<NMResponse<NMSongDetailResult>>(`http://music.163.com/api/song/detail/?ids=${encodeURIComponent(JSON.stringify([id]))}`)

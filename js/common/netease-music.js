@@ -36,6 +36,7 @@ define(["require", "exports", "axios", "./netease-crypto", "./music-interface"],
     }
     class NeteaseMusicAPI {
         constructor(proxy = 'https://0579dc8a-8835-4932-9253-e2143ec07833.coding.io/proxy.php') {
+            this.name = '网易云音乐';
             this.musicNM = new WeakMap();
             this.axios = axios_1.default.create();
             this.axios.interceptors.request.use((config) => {
@@ -82,6 +83,23 @@ define(["require", "exports", "axios", "./netease-crypto", "./music-interface"],
             this.musicNM.set(ret, song);
             return ret;
         }
+        getPlaylist(id) {
+            return __awaiter(this, void 0, void 0, function* () {
+                const obj = {
+                    id,
+                    n: 1000,
+                    csrf_token: ''
+                };
+                const encData = netease_crypto_1.aesRsaEncrypt(JSON.stringify(obj));
+                const res = yield this.request(`/v3/playlist/detail`, encData);
+                const data = res.data;
+                let ret = [];
+                for (let song of data.playlist.tracks) {
+                    ret.push(this.shortSong2Music(song));
+                }
+                return ret;
+            });
+        }
         search(key) {
             return __awaiter(this, void 0, void 0, function* () {
                 const limit = 30;
@@ -102,7 +120,18 @@ define(["require", "exports", "axios", "./netease-crypto", "./music-interface"],
                 for (let song of data.result.songs) {
                     ret.push(this.shortSong2Music(song));
                 }
-                return ret;
+                for (let m of ret) {
+                    try {
+                        const url = yield this.getMusicURL(m);
+                        if (/^https?:\/\//.test(url)) {
+                            return m;
+                        }
+                    }
+                    catch (e) {
+                        console.error('无效的搜索结果', m.name, m.author, e);
+                    }
+                }
+                throw new music_interface_1.MusicError('无可播放的歌');
             });
         }
         getMusicURL(music) {
@@ -111,11 +140,16 @@ define(["require", "exports", "axios", "./netease-crypto", "./music-interface"],
                 if (!song) {
                     throw new Error('获取歌曲地址失败');
                 }
+                if (song.url) {
+                    return song.url;
+                }
                 let br;
                 if (song.mMusic) {
                     br = song.mMusic.bitrate;
                 }
-                return yield this.getMusicURLById(song.id, br);
+                const url = yield this.getMusicURLById(song.id, br);
+                song.url = url;
+                return url;
             });
         }
         getMusicById(id) {
