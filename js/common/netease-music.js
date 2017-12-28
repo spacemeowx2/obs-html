@@ -34,10 +34,10 @@ define(["require", "exports", "axios", "./netease-crypto", "./music-interface"],
         };
         return song;
     }
+    const musicNM = new WeakMap();
     class NeteaseMusicAPI {
         constructor(proxy = 'https://0579dc8a-8835-4932-9253-e2143ec07833.coding.io/proxy.php') {
             this.name = '网易云音乐';
-            this.musicNM = new WeakMap();
             this.axios = axios_1.default.create();
             this.axios.interceptors.request.use((config) => {
                 if (config.url && config.url.match(/^https?:/)) {
@@ -70,7 +70,7 @@ define(["require", "exports", "axios", "./netease-crypto", "./music-interface"],
                 duration: song.dt / 1000,
                 provider: this
             });
-            this.musicNM.set(ret, shortSong2Song(song));
+            musicNM.set(ret, shortSong2Song(song));
             return ret;
         }
         song2Music(song) {
@@ -80,7 +80,7 @@ define(["require", "exports", "axios", "./netease-crypto", "./music-interface"],
                 duration: song.duration / 1000,
                 provider: this
             });
-            this.musicNM.set(ret, song);
+            musicNM.set(ret, song);
             return ret;
         }
         getPlaylist(id) {
@@ -136,7 +136,7 @@ define(["require", "exports", "axios", "./netease-crypto", "./music-interface"],
         }
         getMusicURL(music) {
             return __awaiter(this, void 0, void 0, function* () {
-                const song = this.musicNM.get(music);
+                const song = musicNM.get(music);
                 if (!song) {
                     throw new Error('获取歌曲地址失败');
                 }

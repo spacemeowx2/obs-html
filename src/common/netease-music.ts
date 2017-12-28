@@ -101,10 +101,10 @@ interface NMURLResult {
         size: number
     }[]
 }
+const musicNM = new WeakMap<Music,  NMSong>()
 export class NeteaseMusicAPI implements MusicProvider {
     name = '网易云音乐'
     axios: AxiosInstance
-    musicNM = new WeakMap<Music,  NMSong>()
     constructor (proxy = 'https://0579dc8a-8835-4932-9253-e2143ec07833.coding.io/proxy.php') {
         this.axios = axios.create()
         this.axios.interceptors.request.use((config) => {
@@ -138,7 +138,7 @@ export class NeteaseMusicAPI implements MusicProvider {
             duration: song.dt / 1000,
             provider: this
         })
-        this.musicNM.set(ret, shortSong2Song(song))
+        musicNM.set(ret, shortSong2Song(song))
         return ret
     }
     song2Music (song: NMSong): Music {
@@ -148,7 +148,7 @@ export class NeteaseMusicAPI implements MusicProvider {
             duration: song.duration / 1000,
             provider: this
         })
-        this.musicNM.set(ret, song)
+        musicNM.set(ret, song)
         return ret
     }
     async getPlaylist (id: string): Promise<Music[]> {
@@ -198,7 +198,7 @@ export class NeteaseMusicAPI implements MusicProvider {
         throw new MusicError('无可播放的歌')
     }
     async getMusicURL (music: Music): Promise<string> {
-        const song = this.musicNM.get(music)
+        const song = musicNM.get(music)
         if (!song) {
             throw new Error('获取歌曲地址失败')
         }
