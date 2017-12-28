@@ -1,8 +1,19 @@
-define(["require", "exports", "./common/param", "./common/utils", "./common/bilibili-danmaku"], function (require, exports, param_1, utils_1, bilibili_danmaku_1) {
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+define(["require", "exports", "./common/param", "./common/utils", "./common/bilibili-danmaku", "./view/danmaku", "fetch-jsonp"], function (require, exports, param_1, utils_1, bilibili_danmaku_1, danmaku_1, fetch_jsonp_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     class BilibiliDanmakuHelper {
-        constructor(roomid) {
+        constructor(roomid, view) {
+            this.view = view;
+            this.avatarTask = new utils_1.Task();
+            this.avatarCache = new Map();
             this.tts = new TTS(param_1.Param.get('ttsint', 200), param_1.Param.get('volume', 0));
             if (roomid && roomid.length > 0) {
                 let danmu = new bilibili_danmaku_1.BilibiliDanmaku(roomid);
@@ -21,7 +32,7 @@ define(["require", "exports", "./common/param", "./common/utils", "./common/bili
         onDanmu(danmu) {
             console.log('onDanmu', danmu);
             if (param_1.Param.get('textdanmu', '1') === '1') {
-                this.addLine(`${danmu.lb}: ${danmu.text}`);
+                this.addDanmu(danmu);
             }
             if (param_1.Param.get('ttsdanmu', '1') === '1') {
                 if (this.tts.length < 3) {
@@ -40,14 +51,40 @@ define(["require", "exports", "./common/param", "./common/utils", "./common/bili
             }
         }
         addLine(text) {
-            const list = document.getElementById('list');
-            const danmaku = document.getElementById('danmaku');
-            const li = document.createElement('li');
-            li.innerText = text;
-            list.appendChild(li);
-            if (list.children.length > 50) {
-                list.children[0].remove();
+            this.view.addLine(text);
+        }
+        addDanmu(danmu) {
+            const uid = danmu.uid;
+            const hit = this.avatarCache.has(uid);
+            let avatarReq;
+            if (hit) {
+                avatarReq = Promise.resolve(this.avatarCache.get(uid));
             }
+            else {
+                avatarReq = fetch_jsonp_1.default(`https://api.bilibili.com/cardrich?mid=${uid}&type=jsonp`).then((res) => __awaiter(this, void 0, void 0, function* () {
+                    const dat = yield res.json();
+                    try {
+                        const avatar = dat.data.card.face;
+                        if (avatar) {
+                            this.avatarCache.set(uid, avatar);
+                        }
+                        return avatar;
+                    }
+                    catch (e) {
+                        return undefined;
+                    }
+                }));
+            }
+            this.avatarTask.add(() => __awaiter(this, void 0, void 0, function* () {
+                const avatar = yield avatarReq;
+                this.view.addDanmaku({
+                    sender: {
+                        name: danmu.lb,
+                        avatar
+                    },
+                    content: danmu.text
+                });
+            }));
         }
     }
     class TTS {
@@ -91,7 +128,9 @@ define(["require", "exports", "./common/param", "./common/utils", "./common/bili
     }
     function bilibiliDanmaku() {
         let roomid = param_1.Param.get('roomid', '');
-        let helper = new BilibiliDanmakuHelper(roomid);
+        let view = new danmaku_1.DanmakuListComponent();
+        view.$mount('#danmaku');
+        let helper = new BilibiliDanmakuHelper(roomid, view);
         // @ts-ignore
         window.helper = helper;
     }

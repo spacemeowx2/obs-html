@@ -1,9 +1,21 @@
 import { Param } from './common/param'
-import { delay } from './common/utils'
+import { delay, Task } from './common/utils'
 import { BilibiliDanmaku, GiftInfo, DanmuInfo } from './common/bilibili-danmaku'
+import { DanmakuListComponent } from './view/danmaku'
+import fetchJsonp from 'fetch-jsonp'
+
+interface BilibiliCard {
+    data: {
+        card: {
+            face: string
+        }
+    }
+}
 class BilibiliDanmakuHelper {
     tts: TTS
-    constructor (roomid: string) {
+    avatarTask = new Task()
+    avatarCache = new Map<number, string>()
+    constructor (roomid: string, private view: DanmakuListComponent) {
         this.tts = new TTS(Param.get('ttsint', 200), Param.get('volume', 0))
         if (roomid && roomid.length > 0) {
             let danmu = new BilibiliDanmaku(roomid)
@@ -21,7 +33,7 @@ class BilibiliDanmakuHelper {
     onDanmu (danmu: DanmuInfo) {
         console.log('onDanmu', danmu)
         if (Param.get('textdanmu', '1') === '1') {
-            this.addLine(`${danmu.lb}: ${danmu.text}`)
+            this.addDanmu(danmu)
         }
         if (Param.get('ttsdanmu', '1') === '1') {
             if (this.tts.length < 3) {
@@ -40,14 +52,38 @@ class BilibiliDanmakuHelper {
         }
     }
     addLine (text: string) {
-        const list = document.getElementById('list')!
-        const danmaku = document.getElementById('danmaku')
-        const li = document.createElement('li')
-        li.innerText = text
-        list.appendChild(li)
-        if (list.children.length > 50) {
-            list.children[0].remove()
+        this.view.addLine(text)
+    }
+    addDanmu (danmu: DanmuInfo) {
+        const uid = danmu.uid
+        const hit = this.avatarCache.has(uid)
+        let avatarReq: Promise<string | undefined>
+        if (hit) {
+            avatarReq = Promise.resolve(this.avatarCache.get(uid))
+        } else {
+            avatarReq = fetchJsonp(`https://api.bilibili.com/cardrich?mid=${uid}&type=jsonp`).then(async (res) => {
+                const dat = await res.json<BilibiliCard>()
+                try {
+                    const avatar = dat.data.card.face
+                    if (avatar) {
+                        this.avatarCache.set(uid, avatar)
+                    }
+                    return avatar
+                } catch (e) {
+                    return undefined
+                }
+            })
         }
+        this.avatarTask.add(async () => {
+            const avatar = await avatarReq
+            this.view.addDanmaku({
+                sender: {
+                    name: danmu.lb,
+                    avatar
+                },
+                content: danmu.text
+            })
+        })
     }
 }
 class TTS {
@@ -96,7 +132,9 @@ class TTS {
 }
 function bilibiliDanmaku () {
     let roomid = Param.get('roomid', '')
-    let helper = new BilibiliDanmakuHelper(roomid)
+    let view = new DanmakuListComponent()
+    view.$mount('#danmaku')
+    let helper = new BilibiliDanmakuHelper(roomid, view)
     // @ts-ignore
     window.helper = helper
 }

@@ -1,19 +1,22 @@
 <html>
     <head>
         <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
         <script src="requirejs.conf.js"></script>
         <link rel="stylesheet" href="css/danmaku.css"></link>
     </head>
     <body>
         <script type="text/x-template" id="danmaku-template">
             <div class="danmaku">
-                
+                <img v-if="sender && sender.avatar" :src="sender.avatar">
+                <div v-if="sender">{{sender.name}}: {{content}}</div>
+                <div v-if="!sender">{{content}}</div>
             </div>
         </script>
         <script type="text/x-template" id="danmaku-list-template">
             <div class="danmaku-list">
-                <transition-group name="fade">
-                    <danmaku v-for='i in list' v-key='danmakuKey(i)' />
+                <transition-group name="list" class="danmaku-container" tag="div">
+                    <danmaku v-for='i in list' :key='danmakuKey(i)' :sender='i.sender' :content='i.content' />
                 </transition-group>
             </div>
         </script>

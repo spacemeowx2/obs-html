@@ -1,51 +1,61 @@
 import Vue from 'vue'
 import Component from 'vue-class-component'
 
+interface DanmakuSender {
+    name: string
+    avatar?: string
+}
+interface Danmaku {
+    sender?: DanmakuSender
+    content: string
+    id?: number
+}
 @Component({
     name: 'danmaku',
     template: '#danmaku-template',
+    props: ['sender', 'content']
 })
-export class OrderSongComponent extends Vue {
-    tips = '发送 "!点歌,歌名" 进行点歌'
-    currentTime = 0 // in sec
-    currentDuration = 0 // in sec
-    currentFrom = ''
-    queue: SongRequest[] = []
-    showItems = 5
-    private toastTask = new Task()
-    private toast = ''
-    private toastShow = false
-    private toastColor = ToastColor.Success
+class DanmakuComponent extends Vue {
+}
 
-    showToast (text: string, color: ToastColor = ToastColor.Success) {
-        this.toastTask.add(async () => {
-            this.toast = text
-            this.toastColor = color
-            this.toastShow = true
-            await delay(3000)
-            this.toastShow = false
-            await delay(1000)
+@Component({
+    name: 'danmaku-list',
+    template: '#danmaku-list-template',
+    props: {
+        'avatar': {
+            default: false
+        },
+        'stayTime': {
+            default: 10
+        }
+    },
+    components: {
+        'danmaku': DanmakuComponent
+    }
+})
+export class DanmakuListComponent extends Vue {
+    listLimit = 50
+    list: Danmaku[] = []
+    nextId = 1
+    danmakuKey (danmaku: Danmaku): string {
+        return danmaku.id!.toString()
+    }
+    addLine (text: string) {
+        this.addDanmaku({
+            content: text
         })
     }
-    
-    get currentSong (): string {
-        if (this.queue.length === 0) return '暂无歌曲'
-        return `${this.songDisplayName} ${sec2pretty(this.currentTime)} / ${sec2pretty(this.currentDuration)}`
+    addDanmaku (danmu: Danmaku) {
+        this.list.push({
+            ...danmu,
+            id: this.nextId++
+        })
+        this.checkListLimit()
     }
-    get curFrom (): string {
-        if (this.queue.length === 0) return ''
-        const req = this.queue[0]
-        return `(${req.from})`
-    }
-    get list (): SongRequest[] {
-        return this.queue.slice(1, 1 + this.showItems)
-    }
-    get listCount (): number {
-        return this.queue.length - 1
-    }
-    get songDisplayName (): string {
-        if (this.queue.length === 0) return '暂无歌曲'
-        let cur = this.queue[0].music
-        return cur.toString()
+    checkListLimit () {
+        const more = 5
+        if (this.list.length > this.listLimit + more) {
+            this.list.splice(0, more)
+        }
     }
 }
