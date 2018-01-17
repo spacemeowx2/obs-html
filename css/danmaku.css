@@ -42,13 +42,18 @@ ul li {
 .danmaku > div {
     flex: auto;
     word-break: break-all;
+	text-shadow: 0 0 2px black;
 }
 .list-enter-active, .list-leave-active {
     transition: all 0.5s;
 }
-.list-enter, .list-leave-to {
+.list-enter {
     opacity: 0;
     transform: translateY(100%);
+}
+.list-leave-to {
+    opacity: 0;
+    transform: translateY(-100%);
 }
 .list-move {
     transition: transform 0.75s;

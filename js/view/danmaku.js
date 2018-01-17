@@ -22,17 +22,27 @@ define(["require", "exports", "vue", "vue-class-component"], function (require, 
             this.listLimit = 50;
             this.list = [];
             this.nextId = 1;
+            this.stayTime = 60;
         }
         danmakuKey(danmaku) {
             return danmaku.id.toString();
         }
-        addLine(text) {
+        addLine(text, persist = false) {
             this.addDanmaku({
                 content: text
-            });
+            }, persist);
         }
-        addDanmaku(danmu) {
-            this.list.push(Object.assign({}, danmu, { id: this.nextId++ }));
+        addDanmaku(danmu, persist = false) {
+            const item = Object.assign({}, danmu, { id: this.nextId++ });
+            this.list.push(item);
+            if (!persist) {
+                setTimeout(() => {
+                    const id = this.list.indexOf(item);
+                    if (id !== -1) {
+                        this.list.splice(id, 1);
+                    }
+                }, this.stayTime * 1000);
+            }
             this.checkListLimit();
         }
         checkListLimit() {
@@ -49,9 +59,6 @@ define(["require", "exports", "vue", "vue-class-component"], function (require, 
             props: {
                 'avatar': {
                     default: false
-                },
-                'stayTime': {
-                    default: 10
                 }
             },
             components: {

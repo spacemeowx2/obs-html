@@ -25,8 +25,8 @@ class BilibiliDanmakuHelper {
             danmu.onDanmu = (danmu) => this.onDanmu(danmu)
             danmu.onGift = (gift) => this.onGift(gift)
         } else {
-            this.addLine('Bilibili 弹幕助手 启动!')
-            this.addLine('请指定房间号')
+            this.addLine('Bilibili 弹幕助手 启动!', true)
+            this.addLine('请指定房间号', true)
             this.tts.addQueue('请指定房间号')
         }
     }
@@ -45,14 +45,14 @@ class BilibiliDanmakuHelper {
         let text = `感谢${sender}的${count}个${giftName}`
         console.log('onGift', text)
         if (Param.get('textgift', '1') === '1') {
-            this.addLine(text)
+            this.addLine(text, true)
         }
         if (Param.get('ttsgift', '1') === '1') {
             this.tts.addQueue(text) // 不管怎样还是要谢啊(逃 辣条刷屏就算了
         }
     }
-    addLine (text: string) {
-        this.view.addLine(text)
+    addLine (text: string, persist = false) {
+        this.view.addLine(text, persist)
     }
     addDanmu (danmu: DanmuInfo) {
         const uid = danmu.uid

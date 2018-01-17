@@ -24,9 +24,6 @@ class DanmakuComponent extends Vue {
     props: {
         'avatar': {
             default: false
-        },
-        'stayTime': {
-            default: 10
         }
     },
     components: {
@@ -37,19 +34,29 @@ export class DanmakuListComponent extends Vue {
     listLimit = 50
     list: Danmaku[] = []
     nextId = 1
+    stayTime = 60
     danmakuKey (danmaku: Danmaku): string {
         return danmaku.id!.toString()
     }
-    addLine (text: string) {
+    addLine (text: string, persist = false) {
         this.addDanmaku({
             content: text
-        })
+        }, persist)
     }
-    addDanmaku (danmu: Danmaku) {
-        this.list.push({
+    addDanmaku (danmu: Danmaku, persist = false) {
+        const item = {
             ...danmu,
             id: this.nextId++
-        })
+        }
+        this.list.push(item)
+        if (!persist) {
+            setTimeout(() => {
+                const id = this.list.indexOf(item)
+                if (id !== -1) {
+                    this.list.splice(id, 1)
+                }
+            }, this.stayTime * 1000)
+        }
         this.checkListLimit()
     }
     checkListLimit () {
