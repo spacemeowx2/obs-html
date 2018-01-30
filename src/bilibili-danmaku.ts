@@ -131,8 +131,10 @@ class TTS {
     }
 }
 function bilibiliDanmaku () {
+    let stayTime = Param.get('stayTime', 60)
     let roomid = Param.get('roomid', '')
     let view = new DanmakuListComponent()
+    view.stayTime = stayTime
     view.$mount('#danmaku')
     let helper = new BilibiliDanmakuHelper(roomid, view)
     // @ts-ignore

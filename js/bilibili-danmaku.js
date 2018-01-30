@@ -127,8 +127,10 @@ define(["require", "exports", "./common/param", "./common/utils", "./common/bili
         }
     }
     function bilibiliDanmaku() {
+        let stayTime = param_1.Param.get('stayTime', 60);
         let roomid = param_1.Param.get('roomid', '');
         let view = new danmaku_1.DanmakuListComponent();
+        view.stayTime = stayTime;
         view.$mount('#danmaku');
         let helper = new BilibiliDanmakuHelper(roomid, view);
         // @ts-ignore
