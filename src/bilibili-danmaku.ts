@@ -61,7 +61,7 @@ class BilibiliDanmakuHelper {
         if (hit) {
             avatarReq = Promise.resolve(this.avatarCache.get(uid))
         } else {
-            avatarReq = fetchJsonp(`https://api.bilibili.com/cardrich?mid=${uid}&type=jsonp`).then(async (res) => {
+            avatarReq = fetchJsonp(`https://api.bilibili.com/x/web-interface/card?mid=${uid}&jsonp=jsonp`).then(async (res) => {
                 const dat = await res.json<BilibiliCard>()
                 try {
                     const avatar = dat.data.card.face

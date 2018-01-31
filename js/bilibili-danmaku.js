@@ -61,7 +61,7 @@ define(["require", "exports", "./common/param", "./common/utils", "./common/bili
                 avatarReq = Promise.resolve(this.avatarCache.get(uid));
             }
             else {
-                avatarReq = fetch_jsonp_1.default(`https://api.bilibili.com/cardrich?mid=${uid}&type=jsonp`).then((res) => __awaiter(this, void 0, void 0, function* () {
+                avatarReq = fetch_jsonp_1.default(`https://api.bilibili.com/x/web-interface/card?mid=${uid}&jsonp=jsonp`).then((res) => __awaiter(this, void 0, void 0, function* () {
                     const dat = yield res.json();
                     try {
                         const avatar = dat.data.card.face;
