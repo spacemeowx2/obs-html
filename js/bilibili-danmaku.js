@@ -6,7 +6,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-define(["require", "exports", "./common/param", "./common/utils", "./common/bilibili-danmaku", "./view/danmaku", "fetch-jsonp"], function (require, exports, param_1, utils_1, bilibili_danmaku_1, danmaku_1, fetch_jsonp_1) {
+define(["require", "exports", "./common/param", "./common/utils", "./common/bilibili-danmaku", "./view/danmaku"], function (require, exports, param_1, utils_1, bilibili_danmaku_1, danmaku_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     class BilibiliDanmakuHelper {
@@ -19,7 +19,7 @@ define(["require", "exports", "./common/param", "./common/utils", "./common/bili
                 let danmu = new bilibili_danmaku_1.BilibiliDanmaku(roomid);
                 let welcome = `Bilibili 弹幕助手 启动! 当前房间号: ${roomid}`;
                 this.addLine(welcome);
-                this.tts.addQueue(welcome);
+                // this.tts.addQueue(welcome)
                 danmu.onDanmu = (danmu) => this.onDanmu(danmu);
                 danmu.onGift = (gift) => this.onGift(gift);
             }
@@ -56,27 +56,8 @@ define(["require", "exports", "./common/param", "./common/utils", "./common/bili
         addDanmu(danmu) {
             const uid = danmu.uid;
             const hit = this.avatarCache.has(uid);
-            let avatarReq;
-            if (hit) {
-                avatarReq = Promise.resolve(this.avatarCache.get(uid));
-            }
-            else {
-                avatarReq = fetch_jsonp_1.default(`https://api.bilibili.com/x/web-interface/card?mid=${uid}&jsonp=jsonp`).then((res) => __awaiter(this, void 0, void 0, function* () {
-                    const dat = yield res.json();
-                    try {
-                        const avatar = dat.data.card.face;
-                        if (avatar) {
-                            this.avatarCache.set(uid, avatar);
-                        }
-                        return avatar;
-                    }
-                    catch (e) {
-                        return undefined;
-                    }
-                }));
-            }
             this.avatarTask.add(() => __awaiter(this, void 0, void 0, function* () {
-                const avatar = yield avatarReq;
+                const avatar = undefined;
                 this.view.addDanmaku({
                     sender: {
                         name: danmu.lb,
@@ -103,7 +84,9 @@ define(["require", "exports", "./common/param", "./common/utils", "./common/bili
                 return () => Promise.resolve();
             }
             text = this.replace(text);
-            const url = `http://tts.baidu.com/text2audio?lan=zh&ie=UTF-8&spd=7&text=${encodeURIComponent(text)}`;
+            const query = `type=tns2&idx=1&tex=${encodeURIComponent(text)}&cuid=baidu_speech_demo&cod=2&lan=zh&ctp=1&pdt=1&spd=${param_1.Param.get('spd', '5')}&per=0&vol=10&pit=5`;
+            const url = `https://ai.baidu.com/aidemo?${query}`;
+            // const url = `http://tts.baidu.com/text2audio?lan=zh&ie=UTF-8&spd=7&text=${encodeURIComponent(text)}`
             const audio = new Audio(url);
             audio.volume = this.volume;
             return () => new Promise((res) => {

@@ -21,7 +21,7 @@ class BilibiliDanmakuHelper {
             let danmu = new BilibiliDanmaku(roomid)
             let welcome = `Bilibili 弹幕助手 启动! 当前房间号: ${roomid}`
             this.addLine(welcome)
-            this.tts.addQueue(welcome)
+            // this.tts.addQueue(welcome)
             danmu.onDanmu = (danmu) => this.onDanmu(danmu)
             danmu.onGift = (gift) => this.onGift(gift)
         } else {
@@ -57,25 +57,8 @@ class BilibiliDanmakuHelper {
     addDanmu (danmu: DanmuInfo) {
         const uid = danmu.uid
         const hit = this.avatarCache.has(uid)
-        let avatarReq: Promise<string | undefined>
-        if (hit) {
-            avatarReq = Promise.resolve(this.avatarCache.get(uid))
-        } else {
-            avatarReq = fetchJsonp(`https://api.bilibili.com/x/web-interface/card?mid=${uid}&jsonp=jsonp`).then(async (res) => {
-                const dat = await res.json<BilibiliCard>()
-                try {
-                    const avatar = dat.data.card.face
-                    if (avatar) {
-                        this.avatarCache.set(uid, avatar)
-                    }
-                    return avatar
-                } catch (e) {
-                    return undefined
-                }
-            })
-        }
         this.avatarTask.add(async () => {
-            const avatar = await avatarReq
+            const avatar = undefined
             this.view.addDanmaku({
                 sender: {
                     name: danmu.lb,
@@ -106,10 +89,12 @@ class TTS {
             return () => Promise.resolve()
         }
         text = this.replace(text)
-        const url = `http://tts.baidu.com/text2audio?lan=zh&ie=UTF-8&spd=7&text=${encodeURIComponent(text)}`
+        const query = `type=tns2&idx=1&tex=${encodeURIComponent(text)}&cuid=baidu_speech_demo&cod=2&lan=zh&ctp=1&pdt=1&spd=${Param.get('spd', '5')}&per=0&vol=10&pit=5`
+        const url = `https://ai.baidu.com/aidemo?${query}`
+        // const url = `http://tts.baidu.com/text2audio?lan=zh&ie=UTF-8&spd=7&text=${encodeURIComponent(text)}`
         const audio = new Audio(url)
         audio.volume = this.volume
-        
+
         return () => new Promise<void>((res) => {
             audio.onended = () => {
                 this.length--
