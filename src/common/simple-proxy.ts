@@ -7,7 +7,7 @@ interface SimpleResponse<T> {
     data: T
 }
 const node = 'ws://localhost:8080/'
-function request<T> (config: AxiosRequestConfig): Promise<SimpleResponse<T>> {
+export function request<T> (config: AxiosRequestConfig): Promise<SimpleResponse<T>> {
     return new Promise((res, rej) => {
         const ws = new WebSocket(node)
         ws.onopen = () => {

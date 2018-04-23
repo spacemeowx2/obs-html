@@ -25,6 +25,7 @@ define(["require", "exports"], function (require, exports) {
             ws.onerror = e => rej(e);
         });
     }
+    exports.request = request;
     function get(url) {
         return __awaiter(this, void 0, void 0, function* () {
             const config = {

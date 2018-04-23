@@ -1,7 +1,8 @@
-import axios from 'axios'
-import { AxiosInstance } from 'axios'
+import axios, { AxiosRequestConfig } from 'axios'
 import { aesRsaEncrypt } from './netease-crypto'
 import { MusicProvider, Music, MusicError } from './music-interface'
+import { request } from './simple-proxy'
+
 const NETEASE_API_URL = 'http://music.163.com/weapi'
 const enum NMResCode {
     OK = 200
@@ -104,32 +105,34 @@ interface NMURLResult {
 const musicNM = new WeakMap<Music,  NMSong>()
 export class NeteaseMusicAPI implements MusicProvider {
     name = '网易云音乐'
-    axios: AxiosInstance
-    constructor (proxy = 'https://0579dc8a-8835-4932-9253-e2143ec07833.coding.io/proxy.php') {
-        this.axios = axios.create()
-        this.axios.interceptors.request.use((config) => {
-            if (config.url && config.url.match(/^https?:/)) {
-                const overrideHeaders = {
-                    'Origin': 'http://music.163.com',
-                    'Referer': 'http://music.163.com',
-                    'User-Agent': randomUserAgent(),
-                    'X-Real-IP': randomChinaIpAddress(),
-                    'Connection': 'keep-alive',
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                }
-                config.headers['X-PROXY-HEADER'] = this.headers2ProxyHeader(overrideHeaders)
-                config.headers['X-PROXY-URL'] = config.url
-                config.url = proxy
-            }
-            return config
-        })
+    constructor (private proxy = 'ws://localhost:8080/') {
     }
     headers2ProxyHeader (hs: any) {
         return JSON.stringify(Object.keys(hs).map(k => `${k}: ${hs[k]}`))
     }
-    request<T> (api: string, data: any) {
-        let qs = Object.keys(data).map(k => `${encodeURIComponent(k)}=${encodeURIComponent(data[k])}`).join('&')
-        return this.axios.post<T>(NETEASE_API_URL + api, qs)
+    post<T> (api: string, data: any) {
+        const headers = {
+            'Origin': 'http://music.163.com',
+            'Referer': 'http://music.163.com',
+            'User-Agent': randomUserAgent(),
+            'X-Real-IP': randomChinaIpAddress(),
+            'Connection': 'keep-alive',
+            'Content-Type': 'application/x-www-form-urlencoded',
+        }
+        const qs = Object.keys(data).map(k => `${encodeURIComponent(k)}=${encodeURIComponent(data[k])}`).join('&')
+        const config: AxiosRequestConfig = {
+            method: 'POST',
+            url: NETEASE_API_URL + api,
+            data: qs,
+            headers
+        }
+        return request<T>(config)
+    }
+    get<T> (url: string) {
+        return request<T>({
+            method: 'GET',
+            url
+        })
     }
     shortSong2Music (song: NMShortSong): Music {
         let ret: Music = new Music({
@@ -158,7 +161,7 @@ export class NeteaseMusicAPI implements MusicProvider {
             csrf_token: ''
         }
         const encData = aesRsaEncrypt(JSON.stringify(obj))
-        const res = await this.request<NMResponse<NMPlaylistDetail>>(`/v3/playlist/detail`, encData)
+        const res = await this.post<NMResponse<NMPlaylistDetail>>(`/v3/playlist/detail`, encData)
         const data = res.data
         let ret: Music[] = []
         for (let song of data.playlist.tracks) {
@@ -176,7 +179,7 @@ export class NeteaseMusicAPI implements MusicProvider {
             offset: (page - 1) * limit,
         }
         const encData = aesRsaEncrypt(JSON.stringify(obj))
-        const res = await this.request<NMResponse<NMSearchResult>>('/cloudsearch/get/web?csrf_token=', encData)
+        const res = await this.post<NMResponse<NMSearchResult>>('/cloudsearch/get/web?csrf_token=', encData)
         const data = res.data
         if (data.code !== NMResCode.OK) {
             throw new MusicError('搜索失败')
@@ -214,7 +217,7 @@ export class NeteaseMusicAPI implements MusicProvider {
         return url
     }
     async getMusicById (id: number): Promise<Music> {
-        const res = await this.axios.get<NMResponse<NMSongDetailResult>>(`http://music.163.com/api/song/detail/?ids=${encodeURIComponent(JSON.stringify([id]))}`)
+        const res = await this.get<NMResponse<NMSongDetailResult>>(`http://music.163.com/api/song/detail/?ids=${encodeURIComponent(JSON.stringify([id]))}`)
         const data = res.data
         if (data.code !== NMResCode.OK) throw new Error('获取歌曲详情时失败')
         if (data.songs.length > 0) {
@@ -230,7 +233,7 @@ export class NeteaseMusicAPI implements MusicProvider {
             csrf_token: '',
         }
         const encData = aesRsaEncrypt(JSON.stringify(obj))
-        const res = await this.request<NMResponse<NMURLResult>>('/song/enhance/player/url', encData)
+        const res = await this.post<NMResponse<NMURLResult>>('/song/enhance/player/url', encData)
         const data = res.data.data
         if (res.data.code !== NMResCode.OK || data.length === 0) {
             throw new MusicError('获取歌曲地址失败')

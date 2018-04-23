@@ -6,7 +6,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-define(["require", "exports", "axios", "./netease-crypto", "./music-interface"], function (require, exports, axios_1, netease_crypto_1, music_interface_1) {
+define(["require", "exports", "./netease-crypto", "./music-interface", "./simple-proxy"], function (require, exports, netease_crypto_1, music_interface_1, simple_proxy_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     const NETEASE_API_URL = 'http://music.163.com/weapi';
@@ -36,32 +36,36 @@ define(["require", "exports", "axios", "./netease-crypto", "./music-interface"],
     }
     const musicNM = new WeakMap();
     class NeteaseMusicAPI {
-        constructor(proxy = 'https://0579dc8a-8835-4932-9253-e2143ec07833.coding.io/proxy.php') {
+        constructor(proxy = 'ws://localhost:8080/') {
+            this.proxy = proxy;
             this.name = '网易云音乐';
-            this.axios = axios_1.default.create();
-            this.axios.interceptors.request.use((config) => {
-                if (config.url && config.url.match(/^https?:/)) {
-                    const overrideHeaders = {
-                        'Origin': 'http://music.163.com',
-                        'Referer': 'http://music.163.com',
-                        'User-Agent': randomUserAgent(),
-                        'X-Real-IP': randomChinaIpAddress(),
-                        'Connection': 'keep-alive',
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    };
-                    config.headers['X-PROXY-HEADER'] = this.headers2ProxyHeader(overrideHeaders);
-                    config.headers['X-PROXY-URL'] = config.url;
-                    config.url = proxy;
-                }
-                return config;
-            });
         }
         headers2ProxyHeader(hs) {
             return JSON.stringify(Object.keys(hs).map(k => `${k}: ${hs[k]}`));
         }
-        request(api, data) {
-            let qs = Object.keys(data).map(k => `${encodeURIComponent(k)}=${encodeURIComponent(data[k])}`).join('&');
-            return this.axios.post(NETEASE_API_URL + api, qs);
+        post(api, data) {
+            const headers = {
+                'Origin': 'http://music.163.com',
+                'Referer': 'http://music.163.com',
+                'User-Agent': randomUserAgent(),
+                'X-Real-IP': randomChinaIpAddress(),
+                'Connection': 'keep-alive',
+                'Content-Type': 'application/x-www-form-urlencoded',
+            };
+            const qs = Object.keys(data).map(k => `${encodeURIComponent(k)}=${encodeURIComponent(data[k])}`).join('&');
+            const config = {
+                method: 'POST',
+                url: NETEASE_API_URL + api,
+                data: qs,
+                headers
+            };
+            return simple_proxy_1.request(config);
+        }
+        get(url) {
+            return simple_proxy_1.request({
+                method: 'GET',
+                url
+            });
         }
         shortSong2Music(song) {
             let ret = new music_interface_1.Music({
@@ -91,7 +95,7 @@ define(["require", "exports", "axios", "./netease-crypto", "./music-interface"],
                     csrf_token: ''
                 };
                 const encData = netease_crypto_1.aesRsaEncrypt(JSON.stringify(obj));
-                const res = yield this.request(`/v3/playlist/detail`, encData);
+                const res = yield this.post(`/v3/playlist/detail`, encData);
                 const data = res.data;
                 let ret = [];
                 for (let song of data.playlist.tracks) {
@@ -111,7 +115,7 @@ define(["require", "exports", "axios", "./netease-crypto", "./music-interface"],
                     offset: (page - 1) * limit,
                 };
                 const encData = netease_crypto_1.aesRsaEncrypt(JSON.stringify(obj));
-                const res = yield this.request('/cloudsearch/get/web?csrf_token=', encData);
+                const res = yield this.post('/cloudsearch/get/web?csrf_token=', encData);
                 const data = res.data;
                 if (data.code !== 200 /* OK */) {
                     throw new music_interface_1.MusicError('搜索失败');
@@ -154,7 +158,7 @@ define(["require", "exports", "axios", "./netease-crypto", "./music-interface"],
         }
         getMusicById(id) {
             return __awaiter(this, void 0, void 0, function* () {
-                const res = yield this.axios.get(`http://music.163.com/api/song/detail/?ids=${encodeURIComponent(JSON.stringify([id]))}`);
+                const res = yield this.get(`http://music.163.com/api/song/detail/?ids=${encodeURIComponent(JSON.stringify([id]))}`);
                 const data = res.data;
                 if (data.code !== 200 /* OK */)
                     throw new Error('获取歌曲详情时失败');
@@ -174,7 +178,7 @@ define(["require", "exports", "axios", "./netease-crypto", "./music-interface"],
                     csrf_token: '',
                 };
                 const encData = netease_crypto_1.aesRsaEncrypt(JSON.stringify(obj));
-                const res = yield this.request('/song/enhance/player/url', encData);
+                const res = yield this.post('/song/enhance/player/url', encData);
                 const data = res.data.data;
                 if (res.data.code !== 200 /* OK */ || data.length === 0) {
                     throw new music_interface_1.MusicError('获取歌曲地址失败');
