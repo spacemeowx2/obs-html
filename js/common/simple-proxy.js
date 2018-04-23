@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 define(["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    const node = 'ws://localhost:8080/';
+    const node = 'ws://localhost:22083/';
     function request(config) {
         return new Promise((res, rej) => {
             const ws = new WebSocket(node);

@@ -105,7 +105,7 @@ interface NMURLResult {
 const musicNM = new WeakMap<Music,  NMSong>()
 export class NeteaseMusicAPI implements MusicProvider {
     name = '网易云音乐'
-    constructor (private proxy = 'ws://localhost:8080/') {
+    constructor (private proxy = 'ws://localhost:22083/') {
     }
     headers2ProxyHeader (hs: any) {
         return JSON.stringify(Object.keys(hs).map(k => `${k}: ${hs[k]}`))

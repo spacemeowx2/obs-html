@@ -36,7 +36,7 @@ define(["require", "exports", "./netease-crypto", "./music-interface", "./simple
     }
     const musicNM = new WeakMap();
     class NeteaseMusicAPI {
-        constructor(proxy = 'ws://localhost:8080/') {
+        constructor(proxy = 'ws://localhost:22083/') {
             this.proxy = proxy;
             this.name = '网易云音乐';
         }
