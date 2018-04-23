@@ -1,8 +1,8 @@
 import { Param } from './common/param'
 import { delay, Task } from './common/utils'
+import { get } from './common/simple-proxy'
 import { BilibiliDanmaku, GiftInfo, DanmuInfo } from './common/bilibili-danmaku'
 import { DanmakuListComponent } from './view/danmaku'
-import fetchJsonp from 'fetch-jsonp'
 
 interface BilibiliCard {
     data: {
@@ -57,8 +57,17 @@ class BilibiliDanmakuHelper {
     addDanmu (danmu: DanmuInfo) {
         const uid = danmu.uid
         const hit = this.avatarCache.has(uid)
+        let avatarReq = async () => {
+            try {
+                const dat = await get(`https://api.bilibili.com/x/web-interface/card?mid=${uid}`)
+                console.log(dat.data.card.face)
+                return dat.data.card.face
+            } catch (e) {
+                return undefined
+            }
+        }
         this.avatarTask.add(async () => {
-            const avatar = undefined
+            const avatar = await avatarReq()
             this.view.addDanmaku({
                 sender: {
                     name: danmu.lb,
@@ -91,7 +100,6 @@ class TTS {
         text = this.replace(text)
         const query = `type=tns2&idx=1&tex=${encodeURIComponent(text)}&cuid=baidu_speech_demo&cod=2&lan=zh&ctp=1&pdt=1&spd=${Param.get('spd', '5')}&per=0&vol=10&pit=5`
         const url = `https://ai.baidu.com/aidemo?${query}`
-        // const url = `http://tts.baidu.com/text2audio?lan=zh&ie=UTF-8&spd=7&text=${encodeURIComponent(text)}`
         const audio = new Audio(url)
         audio.volume = this.volume
 

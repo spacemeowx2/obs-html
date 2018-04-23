@@ -6,7 +6,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-define(["require", "exports", "./common/param", "./common/utils", "./common/bilibili-danmaku", "./view/danmaku"], function (require, exports, param_1, utils_1, bilibili_danmaku_1, danmaku_1) {
+define(["require", "exports", "./common/param", "./common/utils", "./common/simple-proxy", "./common/bilibili-danmaku", "./view/danmaku"], function (require, exports, param_1, utils_1, simple_proxy_1, bilibili_danmaku_1, danmaku_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     class BilibiliDanmakuHelper {
@@ -56,8 +56,18 @@ define(["require", "exports", "./common/param", "./common/utils", "./common/bili
         addDanmu(danmu) {
             const uid = danmu.uid;
             const hit = this.avatarCache.has(uid);
+            let avatarReq = () => __awaiter(this, void 0, void 0, function* () {
+                try {
+                    const dat = yield simple_proxy_1.get(`https://api.bilibili.com/x/web-interface/card?mid=${uid}`);
+                    console.log(dat.data.card.face);
+                    return dat.data.card.face;
+                }
+                catch (e) {
+                    return undefined;
+                }
+            });
             this.avatarTask.add(() => __awaiter(this, void 0, void 0, function* () {
-                const avatar = undefined;
+                const avatar = yield avatarReq();
                 this.view.addDanmaku({
                     sender: {
                         name: danmu.lb,
@@ -86,7 +96,6 @@ define(["require", "exports", "./common/param", "./common/utils", "./common/bili
             text = this.replace(text);
             const query = `type=tns2&idx=1&tex=${encodeURIComponent(text)}&cuid=baidu_speech_demo&cod=2&lan=zh&ctp=1&pdt=1&spd=${param_1.Param.get('spd', '5')}&per=0&vol=10&pit=5`;
             const url = `https://ai.baidu.com/aidemo?${query}`;
-            // const url = `http://tts.baidu.com/text2audio?lan=zh&ie=UTF-8&spd=7&text=${encodeURIComponent(text)}`
             const audio = new Audio(url);
             audio.volume = this.volume;
             return () => new Promise((res) => {
