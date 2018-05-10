@@ -1,8 +1,8 @@
 import { Param } from './common/param'
 import { delay, Task } from './common/utils'
-import { get } from './common/simple-proxy'
 import { BilibiliDanmaku, GiftInfo, DanmuInfo } from './common/bilibili-danmaku'
 import { DanmakuListComponent } from './view/danmaku'
+import axios from 'axios'
 
 interface BilibiliCard {
     data: {
@@ -59,7 +59,7 @@ class BilibiliDanmakuHelper {
         const hit = this.avatarCache.has(uid)
         let avatarReq = async () => {
             try {
-                const dat = await get(`https://api.bilibili.com/x/web-interface/card?mid=${uid}`)
+                const dat = (await axios(`https://api.bilibili.com/x/web-interface/card?mid=${uid}`)).data
                 console.log(dat.data.card.face)
                 return dat.data.card.face
             } catch (e) {

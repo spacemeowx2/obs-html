@@ -6,7 +6,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-define(["require", "exports", "./common/param", "./common/utils", "./common/simple-proxy", "./common/bilibili-danmaku", "./view/danmaku"], function (require, exports, param_1, utils_1, simple_proxy_1, bilibili_danmaku_1, danmaku_1) {
+define(["require", "exports", "./common/param", "./common/utils", "./common/bilibili-danmaku", "./view/danmaku", "axios"], function (require, exports, param_1, utils_1, bilibili_danmaku_1, danmaku_1, axios_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     class BilibiliDanmakuHelper {
@@ -58,7 +58,7 @@ define(["require", "exports", "./common/param", "./common/utils", "./common/simp
             const hit = this.avatarCache.has(uid);
             let avatarReq = () => __awaiter(this, void 0, void 0, function* () {
                 try {
-                    const dat = yield simple_proxy_1.get(`https://api.bilibili.com/x/web-interface/card?mid=${uid}`);
+                    const dat = (yield axios_1.default(`https://api.bilibili.com/x/web-interface/card?mid=${uid}`)).data;
                     console.log(dat.data.card.face);
                     return dat.data.card.face;
                 }
