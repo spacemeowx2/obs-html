@@ -216,7 +216,9 @@ define(["require", "exports"], function (require, exports) {
             return {
                 giftName: gift.giftName,
                 sender: gift.uname,
-                count: gift.num
+                count: gift.num,
+                senderAvatar: gift.face,
+                giftId: gift.giftId
             };
         }
     }

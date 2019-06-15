@@ -37,6 +37,8 @@ export interface GiftInfo {
     giftName: string
     count: number
     sender: string
+    senderAvatar: string
+    giftId: number
 }
 export class BilibiliDanmaku {
     w: WebSocket | undefined
@@ -252,7 +254,9 @@ export class BilibiliDanmaku {
         return {
             giftName: gift.giftName,
             sender: gift.uname,
-            count: gift.num
+            count: gift.num,
+            senderAvatar: gift.face,
+            giftId: gift.giftId
         }
     }
 }

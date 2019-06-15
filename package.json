@@ -20,6 +20,7 @@
   "homepage": "https://github.com/spacemeowx2/obs-html#readme",
   "devDependencies": {
     "@types/axios": "^0.14.0",
+    "@types/matter-js": "^0.10.2",
     "@types/text-encoding": "0.0.32",
     "babel-cli": "^6.26.0",
     "typescript": "^2.6.2",
