@@ -1,8 +1,11 @@
 import { Param } from './common/param'
 import { delay, Task } from './common/utils'
 import { BilibiliDanmaku, GiftInfo, DanmuInfo } from './common/bilibili-danmaku'
-import { World, Render, Engine, Bodies, Body, IBodyRenderOptions } from 'matter-js'
+import { World, Render, Engine, Bodies, Body, IBodyRenderOptions, Composites } from 'matter-js'
 import axios from 'axios'
+
+const MaxWidth = 5000
+const MaxHeight = 5000
 
 interface BilibiliGift {
     id: number
@@ -22,11 +25,12 @@ function debug (d: string) {
 }
 function debugClick () {
     // @ts-ignore
-    window.pe.handleGift({giftId: 1})
-    debug('click')
+    window.pe.handleGift({giftId: 1, count: 100})
 }
 class BilibiliPE {
-    engine = Engine.create()
+    engine = Engine.create({
+        enableSleeping: true
+    })
     render = Render.create({
         canvas: document.getElementById('canvas') as HTMLCanvasElement,
         engine: this.engine,
@@ -41,28 +45,63 @@ class BilibiliPE {
         }
     })
     canvas = this.render.canvas
-    ground = Bodies.rectangle(400, 610, 810, 60, { isStatic: true })
+    ground = Bodies.rectangle(400, 610, MaxWidth, 60, { isStatic: true })
+    gifts: Body[] = []
+    giftQueue: IBodyRenderOptions[] = []
     constructor () {
         const { engine, render, ground } = this
-        const boxA = Bodies.rectangle(400, 200, 80, 80)
-        const boxB = Bodies.rectangle(450, 50, 80, 80)
-        World.add(engine.world, [boxA, boxB, ground])
+        World.add(engine.world, [ground])
         Engine.run(engine)
         Render.run(render)
+        this.resize()
         window.addEventListener('resize', () => this.resize())
+        setInterval(() => {
+            for (let b of this.gifts) {
+                const { isSleeping, position: { x, y } } = b
+                if (isSleeping) {
+                    World.remove(engine.world, b)
+                }
+                if (x < -100 || x > (MaxWidth + 100) || y < -100 || y > (MaxHeight + 100)) {
+                    World.remove(engine.world, b)
+                }
+            }
+        }, 5000)
+        setInterval(() => {
+            const r = this.giftQueue.shift()
+            if (r) {
+                this.fireGift(r)
+            }
+        }, 100)
     }
     private resize() {
         const canvas = this.render.canvas
-        const { innerWidth, innerHeight } = window
-       
+        let { innerWidth, innerHeight } = window
+
+        innerWidth = Math.min(MaxWidth, innerWidth)
+        innerHeight = Math.min(MaxHeight, innerHeight)
+
         canvas.width  = innerWidth
         canvas.height = innerHeight
+
+        Body.setPosition(this.ground, { x: 0, y: innerHeight + 30 })
     }
     private get width() {
         return this.canvas.width
     }
     private get height() {
         return this.canvas.height
+    }
+    private fireGift (render: IBodyRenderOptions, imgR = 140) {
+        const r = 15
+        const circle = Bodies.circle(this.width - r / 2, 30, r, {
+            render
+        })
+        render.sprite!.xScale = ((r*2) / imgR)
+        render.sprite!.yScale = ((r*2) / imgR)
+        Body.setVelocity(circle, { x: -(10 + Math.random() * 5), y: (Math.random()) * 2 * 5 })
+        Body.setAngularVelocity(circle, -0.05 + 0.1 * Math.random())
+        World.add(this.engine.world, circle)
+        this.gifts.push(circle)
     }
     handleDanmu (danmu: DanmuInfo) {
         console.log('danmu', danmu)
@@ -75,8 +114,8 @@ class BilibiliPE {
             render = {
                 sprite: {
                     texture: info.img_dynamic,
-                    xScale: 1,
-                    yScale: 1
+                    xScale: 40 / 140,
+                    yScale: 40 / 140
                 }
             }
         } else {
@@ -89,18 +128,9 @@ class BilibiliPE {
             }
             console.error('gift not found', gift)
         }
-        let circle: Body
-        if (render) {
-            circle = Bodies.circle(this.width - 15, 30, 20, {
-                render
-            })
-        } else {
-            circle = Bodies.circle(this.width - 15, 30, 20, {
-                render
-            })
+        for (let i = 0; i < gift.count; i++) {
+            this.giftQueue.push(render)
         }
-        Body.setVelocity(circle, { x: -10, y: 0 })
-        World.add(this.engine.world, circle)
     }
 }
 async function bilibiliPE () {

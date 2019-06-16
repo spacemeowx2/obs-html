@@ -9,18 +9,21 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 define(["require", "exports", "./common/param", "./common/bilibili-danmaku", "matter-js", "axios"], function (require, exports, param_1, bilibili_danmaku_1, matter_js_1, axios_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
+    const MaxWidth = 5000;
+    const MaxHeight = 5000;
     const GiftMap = new Map();
     function debug(d) {
         document.getElementById('debug').innerText += d + '\n';
     }
     function debugClick() {
         // @ts-ignore
-        window.pe.handleGift({ giftId: 1 });
-        debug('click');
+        window.pe.handleGift({ giftId: 1, count: 100 });
     }
     class BilibiliPE {
         constructor() {
-            this.engine = matter_js_1.Engine.create();
+            this.engine = matter_js_1.Engine.create({
+                enableSleeping: true
+            });
             this.render = matter_js_1.Render.create({
                 canvas: document.getElementById('canvas'),
                 engine: this.engine,
@@ -35,26 +38,59 @@ define(["require", "exports", "./common/param", "./common/bilibili-danmaku", "ma
                 }
             });
             this.canvas = this.render.canvas;
-            this.ground = matter_js_1.Bodies.rectangle(400, 610, 810, 60, { isStatic: true });
+            this.ground = matter_js_1.Bodies.rectangle(400, 610, MaxWidth, 60, { isStatic: true });
+            this.gifts = [];
+            this.giftQueue = [];
             const { engine, render, ground } = this;
-            const boxA = matter_js_1.Bodies.rectangle(400, 200, 80, 80);
-            const boxB = matter_js_1.Bodies.rectangle(450, 50, 80, 80);
-            matter_js_1.World.add(engine.world, [boxA, boxB, ground]);
+            matter_js_1.World.add(engine.world, [ground]);
             matter_js_1.Engine.run(engine);
             matter_js_1.Render.run(render);
+            this.resize();
             window.addEventListener('resize', () => this.resize());
+            setInterval(() => {
+                for (let b of this.gifts) {
+                    const { isSleeping, position: { x, y } } = b;
+                    if (isSleeping) {
+                        matter_js_1.World.remove(engine.world, b);
+                    }
+                    if (x < -100 || x > (MaxWidth + 100) || y < -100 || y > (MaxHeight + 100)) {
+                        matter_js_1.World.remove(engine.world, b);
+                    }
+                }
+            }, 5000);
+            setInterval(() => {
+                const r = this.giftQueue.shift();
+                if (r) {
+                    this.fireGift(r);
+                }
+            }, 100);
         }
         resize() {
             const canvas = this.render.canvas;
-            const { innerWidth, innerHeight } = window;
+            let { innerWidth, innerHeight } = window;
+            innerWidth = Math.min(MaxWidth, innerWidth);
+            innerHeight = Math.min(MaxHeight, innerHeight);
             canvas.width = innerWidth;
             canvas.height = innerHeight;
+            matter_js_1.Body.setPosition(this.ground, { x: 0, y: innerHeight + 30 });
         }
         get width() {
             return this.canvas.width;
         }
         get height() {
             return this.canvas.height;
+        }
+        fireGift(render, imgR = 140) {
+            const r = 15;
+            const circle = matter_js_1.Bodies.circle(this.width - r / 2, 30, r, {
+                render
+            });
+            render.sprite.xScale = ((r * 2) / imgR);
+            render.sprite.yScale = ((r * 2) / imgR);
+            matter_js_1.Body.setVelocity(circle, { x: -(10 + Math.random() * 5), y: (Math.random()) * 2 * 5 });
+            matter_js_1.Body.setAngularVelocity(circle, -0.05 + 0.1 * Math.random());
+            matter_js_1.World.add(this.engine.world, circle);
+            this.gifts.push(circle);
         }
         handleDanmu(danmu) {
             console.log('danmu', danmu);
@@ -67,8 +103,8 @@ define(["require", "exports", "./common/param", "./common/bilibili-danmaku", "ma
                 render = {
                     sprite: {
                         texture: info.img_dynamic,
-                        xScale: 1,
-                        yScale: 1
+                        xScale: 40 / 140,
+                        yScale: 40 / 140
                     }
                 };
             }
@@ -82,19 +118,9 @@ define(["require", "exports", "./common/param", "./common/bilibili-danmaku", "ma
                 };
                 console.error('gift not found', gift);
             }
-            let circle;
-            if (render) {
-                circle = matter_js_1.Bodies.circle(this.width - 15, 30, 20, {
-                    render
-                });
+            for (let i = 0; i < gift.count; i++) {
+                this.giftQueue.push(render);
             }
-            else {
-                circle = matter_js_1.Bodies.circle(this.width - 15, 30, 20, {
-                    render
-                });
-            }
-            matter_js_1.Body.setVelocity(circle, { x: -10, y: 0 });
-            matter_js_1.World.add(this.engine.world, circle);
         }
     }
     function bilibiliPE() {
