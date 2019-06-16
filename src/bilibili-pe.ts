@@ -25,7 +25,9 @@ function debug (d: string) {
 }
 function debugClick () {
     // @ts-ignore
-    window.pe.handleGift({giftId: 1, count: 100})
+    // window.pe.handleGift({giftId: 1, count: 100})
+    // @ts-ignore
+    window.pe.handleDanmu({text: 'test'})
 }
 class BilibiliPE {
     engine = Engine.create({
@@ -46,8 +48,9 @@ class BilibiliPE {
     })
     canvas = this.render.canvas
     ground = Bodies.rectangle(400, 610, MaxWidth, 60, { isStatic: true })
-    gifts: Body[] = []
+    bodies: Body[] = []
     giftQueue: IBodyRenderOptions[] = []
+    danmuQueue: {text: string}[] = []
     constructor () {
         const { engine, render, ground } = this
         World.add(engine.world, [ground])
@@ -56,7 +59,7 @@ class BilibiliPE {
         this.resize()
         window.addEventListener('resize', () => this.resize())
         setInterval(() => {
-            for (let b of this.gifts) {
+            for (let b of this.bodies) {
                 const { isSleeping, position: { x, y } } = b
                 if (isSleeping) {
                     World.remove(engine.world, b)
@@ -70,6 +73,19 @@ class BilibiliPE {
             const r = this.giftQueue.shift()
             if (r) {
                 this.fireGift(r)
+            }
+        }, 100)
+        setInterval(() => {
+            const d = this.danmuQueue[0]
+            if (d) {
+                if (d.text.length === 0) {
+                    this.danmuQueue.shift()
+                    return
+                }
+                const c = d.text[0]
+                d.text = d.text.slice(1)
+
+                this.fireChar(c)
             }
         }, 100)
     }
@@ -91,6 +107,42 @@ class BilibiliPE {
     private get height() {
         return this.canvas.height
     }
+    private renderChar (t: string) {
+        const size = 40
+        const canvas = document.createElement('canvas')
+        canvas.width = canvas.height = size
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+            return
+        }
+        ctx.font = '32px 微软雅黑'
+        ctx.strokeStyle = '#000000'
+        ctx.fillStyle = '#FFFFFF'
+        ctx.textBaseline = 'middle'
+        ctx.textAlign = 'center'
+        ctx.fillText(t, size / 2, size / 2)
+        ctx.strokeText(t, size / 2, size / 2)
+        return canvas.toDataURL()
+    }
+    private fireChar (char: string) {
+        const url = this.renderChar(char)
+        if (url) {
+            const r = 25
+            const circle = Bodies.circle(this.width - r / 2, 30, r, {
+                render: {
+                    sprite: {
+                        texture: url,
+                        xScale: 1,
+                        yScale: 1
+                    }
+                }
+            })
+            Body.setVelocity(circle, { x: -10, y: 0 })
+            Body.setAngularVelocity(circle, -0.05 + 0.1 * Math.random())
+            World.add(this.engine.world, circle)
+            this.bodies.push(circle)
+        }
+    }
     private fireGift (render: IBodyRenderOptions, imgR = 140) {
         const r = 15
         const circle = Bodies.circle(this.width - r / 2, 30, r, {
@@ -101,10 +153,11 @@ class BilibiliPE {
         Body.setVelocity(circle, { x: -(10 + Math.random() * 5), y: (Math.random()) * 2 * 5 })
         Body.setAngularVelocity(circle, -0.05 + 0.1 * Math.random())
         World.add(this.engine.world, circle)
-        this.gifts.push(circle)
+        this.bodies.push(circle)
     }
     handleDanmu (danmu: DanmuInfo) {
         console.log('danmu', danmu)
+        this.danmuQueue.push({ text: danmu.text })
     }
     handleGift (gift: GiftInfo) {
         console.log('gift', gift)
