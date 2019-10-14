@@ -144,7 +144,7 @@ class BilibiliPE {
         }
     }
     private fireGift (render: IBodyRenderOptions, imgR = 140) {
-        const r = 15
+        const r = 25
         const circle = Bodies.circle(this.width - r / 2, 30, r, {
             render
         })

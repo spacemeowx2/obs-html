@@ -132,7 +132,7 @@ define(["require", "exports", "./common/param", "./common/bilibili-danmaku", "ma
             }
         }
         fireGift(render, imgR = 140) {
-            const r = 15;
+            const r = 25;
             const circle = matter_js_1.Bodies.circle(this.width - r / 2, 30, r, {
                 render
             });

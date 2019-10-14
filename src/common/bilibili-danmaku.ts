@@ -51,6 +51,7 @@ export class BilibiliDanmaku {
     fields: Field[]
     _hbid: number | null
     stop: boolean
+    _buf: ArrayBuffer = new ArrayBuffer(0)
     constructor (roomid: string) {
         this.roomid = parseInt(roomid)
         this.headerLen = 16
@@ -172,7 +173,17 @@ export class BilibiliDanmaku {
         this.handshake()
     }
     _onmessage (data: ArrayBuffer) {
-        const view = new DataView(data)
+        while (1) {
+            const buf = this._concatAB(this._buf, data)
+            const rest = this._onPkg(buf)
+            this._buf = rest
+            if (rest.byteLength === 0) {
+                break
+            }
+        }
+    }
+    _onPkg (pkgData: ArrayBuffer) {
+        const view = new DataView(pkgData)
         const pkgLen = view.getInt32(0)
         let pkg: Package = {
             op: -1,
@@ -191,7 +202,8 @@ export class BilibiliDanmaku {
             pkg[field.key] = value
         }
         const decoder = new TextDecoder()
-        const payload = data.slice(pkg.headerLen, pkgLen)
+        const payload = pkgData.slice(pkg.headerLen, pkgLen)
+        const restData = pkgData.slice(pkgLen)
         const payloadStr = decoder.decode(payload)
         pkg.payload = payloadStr
         console.log('message', pkg)
@@ -205,6 +217,8 @@ export class BilibiliDanmaku {
                 break
         }
         this.onMessage && this.onMessage(pkg)
+
+        return restData
     }
     _onOP5 (payload: string) {
         try {
