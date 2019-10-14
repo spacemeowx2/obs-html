@@ -12,7 +12,6 @@ define(["require", "exports"], function (require, exports) {
             this.onMessage = null;
             this.onDanmu = null;
             this.onGift = null;
-            this._buf = new ArrayBuffer(0);
             this.roomid = parseInt(roomid);
             this.headerLen = 16;
             this.hbInterval = 30;
@@ -134,13 +133,9 @@ define(["require", "exports"], function (require, exports) {
             this.handshake();
         }
         _onmessage(data) {
-            while (1) {
-                const buf = this._concatAB(this._buf, data);
-                const rest = this._onPkg(buf);
-                this._buf = rest;
-                if (rest.byteLength === 0) {
-                    break;
-                }
+            let buf = data;
+            while (buf.byteLength > 0) {
+                buf = this._onPkg(buf);
             }
         }
         _onPkg(pkgData) {
@@ -168,7 +163,7 @@ define(["require", "exports"], function (require, exports) {
             const restData = pkgData.slice(pkgLen);
             const payloadStr = decoder.decode(payload);
             pkg.payload = payloadStr;
-            console.log('message', pkg);
+            console.log('message', pkg, pkgLen, restData.byteLength);
             switch (pkg.op) {
                 case 5:
                     this._onOP5(pkg.payload);

@@ -51,7 +51,6 @@ export class BilibiliDanmaku {
     fields: Field[]
     _hbid: number | null
     stop: boolean
-    _buf: ArrayBuffer = new ArrayBuffer(0)
     constructor (roomid: string) {
         this.roomid = parseInt(roomid)
         this.headerLen = 16
@@ -173,13 +172,9 @@ export class BilibiliDanmaku {
         this.handshake()
     }
     _onmessage (data: ArrayBuffer) {
-        while (1) {
-            const buf = this._concatAB(this._buf, data)
-            const rest = this._onPkg(buf)
-            this._buf = rest
-            if (rest.byteLength === 0) {
-                break
-            }
+        let buf = data
+        while (buf.byteLength > 0) {
+            buf = this._onPkg(buf)
         }
     }
     _onPkg (pkgData: ArrayBuffer) {
@@ -206,7 +201,7 @@ export class BilibiliDanmaku {
         const restData = pkgData.slice(pkgLen)
         const payloadStr = decoder.decode(payload)
         pkg.payload = payloadStr
-        console.log('message', pkg)
+        console.log('message', pkg, pkgLen, restData.byteLength)
 
         switch (pkg.op) {
             case 5:
