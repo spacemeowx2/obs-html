@@ -116,7 +116,8 @@ export class BilibiliDanmaku {
         this._send({
             uid: 0,
             protover: 1,
-            roomid: this.roomid
+            roomid: this.roomid,
+            key: 'asdf'
         }, OP_HANDSHAKE)
         console.log('handshake sent')
     }

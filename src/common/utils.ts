@@ -6,7 +6,7 @@ export function delay (time: number) {
 export class TaskError extends Error {}
 export class Task {
     private _busy = false
-    private waitAbort: () => void | undefined
+    private waitAbort: (() => void) | undefined = undefined
     private chain: Promise<void> = Promise.resolve()
     private checkAbort = () => {
         if (this.waitAbort) {

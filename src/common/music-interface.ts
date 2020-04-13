@@ -1,10 +1,10 @@
 export class MusicError extends Error {
 }
 export class Music {
-    name: string
-    author: string
+    name!: string
+    author!: string
     duration?: number // in sec, to filter out the long music
-    provider: MusicProvider
+    provider!: MusicProvider
     constructor (music?: Music) {
         if (music) {
             this.name = music.name

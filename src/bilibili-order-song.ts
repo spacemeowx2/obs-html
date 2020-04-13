@@ -11,7 +11,7 @@ class Command {
 }
 
 export class SongRequest {
-    music: Music
+    music!: Music
     constructor (public from: string, public key: string) {
         //
     }
@@ -44,7 +44,7 @@ class SongList extends Array<SongRequest> {
 }
 
 class SongPreload {
-    url: string
+    url!: string
     audio: HTMLAudioElement | undefined = new Audio()
     constructor (private music: Music, private listener: MusicListener<SongRequest>) {
         this.audio!.volume = Param.get('volume', 0.5)
@@ -99,7 +99,7 @@ class SongPreload {
 class SongPlayer {
     list = new SongList()
 
-    currentReq: SongRequest
+    currentReq!: SongRequest
     preloads = new WeakMap<SongRequest, SongPreload>()
     playTask = new Task()
     constructor (private providers: MusicProvider[], private listener: MusicListener<SongRequest>) {
@@ -191,7 +191,7 @@ interface OrderSongConfig {
 class BilibiliOrderSong implements MusicListener<SongRequest> {
     player: SongPlayer
     netease: NeteaseMusicAPI
-    freeTimePlaylist: Music[]
+    freeTimePlaylist!: Music[]
     constructor (roomid: string, private view: OrderSongComponent, {freePlaylist, proxy}: OrderSongConfig = {}) {
         this.netease = new NeteaseMusicAPI(proxy)
         this.player = new SongPlayer([this.netease], this)

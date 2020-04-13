@@ -21,9 +21,9 @@
   "devDependencies": {
     "@types/axios": "^0.14.0",
     "@types/matter-js": "^0.10.2",
-    "@types/text-encoding": "0.0.32",
+    "@types/text-encoding": "^0.0.35",
     "babel-cli": "^6.26.0",
-    "typescript": "^2.6.2",
+    "typescript": "^3.8.3",
     "vue-class-component": "^6.1.1"
   },
   "dependencies": {
