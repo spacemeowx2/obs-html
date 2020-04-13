@@ -34,7 +34,7 @@ define(["require", "exports"], function (require, exports) {
             }
         }
     }
+    exports.Param = Param;
     Param.search = '';
     Param.cache = new Map();
-    exports.Param = Param;
 });

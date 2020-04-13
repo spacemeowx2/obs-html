@@ -104,7 +104,7 @@ export class BilibiliDanmaku {
     }
     connect () {
         this.reset()
-        let w = new WebSocket('wss://broadcastlv.chat.bilibili.com:2245/sub')
+        let w = new WebSocket('wss://broadcastlv.chat.bilibili.com/sub')
         this.w = w
         w.binaryType = "arraybuffer"
         w.onopen = () => this._onopen()
@@ -117,7 +117,6 @@ export class BilibiliDanmaku {
             uid: 0,
             protover: 1,
             roomid: this.roomid,
-            key: 'asdf'
         }, OP_HANDSHAKE)
         console.log('handshake sent')
     }

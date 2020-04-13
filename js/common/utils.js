@@ -13,6 +13,7 @@ define(["require", "exports"], function (require, exports) {
     class Task {
         constructor() {
             this._busy = false;
+            this.waitAbort = undefined;
             this.chain = Promise.resolve();
             this.checkAbort = () => {
                 if (this.waitAbort) {

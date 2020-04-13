@@ -33,7 +33,7 @@ define(["require", "exports", "vue", "vue-class-component"], function (require, 
             }, persist);
         }
         addDanmaku(danmu, persist = false) {
-            const item = Object.assign({}, danmu, { id: this.nextId++ });
+            const item = Object.assign(Object.assign({}, danmu), { id: this.nextId++ });
             this.list.push(item);
             if (!persist) {
                 setTimeout(() => {
