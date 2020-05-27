@@ -1,4 +1,4 @@
-define(["require", "exports"], function (require, exports) {
+define(["require", "exports", "pako"], function (require, exports, pako_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     const FIELD_HEADER_LEN = 0;
@@ -161,6 +161,10 @@ define(["require", "exports"], function (require, exports) {
             const decoder = new TextDecoder();
             const payload = pkgData.slice(pkg.headerLen, pkgLen);
             const restData = pkgData.slice(pkgLen);
+            if (pkg.ver === 2) {
+                const ps = pako_1.inflate(new Uint8Array(payload));
+                return this._onPkg(ps.buffer);
+            }
             const payloadStr = decoder.decode(payload);
             pkg.payload = payloadStr;
             console.log('message', pkg, pkgLen, restData.byteLength);
