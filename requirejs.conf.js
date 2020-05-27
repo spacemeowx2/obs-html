@@ -7,6 +7,7 @@ var require = {
         'bignumber.js/bignumber': 'lib/bignumber',
         'vue-class-component': 'lib/vue-class-component',
         'fetch-jsonp': 'lib/fetch-jsonp-helper',
-        'matter-js': 'lib/matter'
+        'matter-js': 'lib/matter',
+        'pako': 'lib/pako'
     }
 }

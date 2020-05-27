@@ -1,3 +1,5 @@
+import { inflate } from 'pako'
+
 const FIELD_HEADER_LEN = 0
 const FIELD_PROTO_VER = 1
 const FIELD_OP = 2
@@ -177,7 +179,7 @@ export class BilibiliDanmaku {
             buf = this._onPkg(buf)
         }
     }
-    _onPkg (pkgData: ArrayBuffer) {
+    _onPkg (pkgData: ArrayBuffer): ArrayBuffer {
         const view = new DataView(pkgData)
         const pkgLen = view.getInt32(0)
         let pkg: Package = {
@@ -199,6 +201,10 @@ export class BilibiliDanmaku {
         const decoder = new TextDecoder()
         const payload = pkgData.slice(pkg.headerLen, pkgLen)
         const restData = pkgData.slice(pkgLen)
+        if (pkg.ver === 2) {
+            const ps = inflate(new Uint8Array(payload))
+            return this._onPkg(ps.buffer)
+        }
         const payloadStr = decoder.decode(payload)
         pkg.payload = payloadStr
         console.log('message', pkg, pkgLen, restData.byteLength)
